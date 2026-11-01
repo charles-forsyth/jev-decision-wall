@@ -2,7 +2,7 @@
 
 # Decision Wall
 
-### 200 questions. One call. A quarter second.
+### 200 questions per call. About a quarter second.
 
 Type anything. Two hundred yes/no judgments light up as a live heatmap, all answered in **one parallel call** to [TypeSafe Jev](https://typesafe.ai).
 
@@ -69,7 +69,7 @@ Or with Docker:
 
 ```bash
 docker build -t jev-decision-wall .
-docker run --rm -p 8770:8080 -e TYPESAFE_API_KEY=ts-... jev-decision-wall
+docker run --rm -p 127.0.0.1:8770:8080 -e TYPESAFE_API_KEY=ts-... jev-decision-wall   # localhost only
 ```
 
 **What does it cost?** Jev charges for input tokens only. One 200-question call is about 3,000–4,700 tokens, so at TypeSafe's published $0.042 per million input tokens a full wall costs roughly **$0.0002**. The server stops calling at a daily cap (default 5M tokens ≈ $0.21) and logs every call to `~/.config/jev/usage.jsonl`.
@@ -96,7 +96,7 @@ Sets are plain JavaScript files in [`public/sets/`](public/sets/). Each line is 
  browser                      server.js (Node, 0 deps)                TypeSafe
 ┌────────────┐  POST /api/jev  ┌─────────────────────────┐   1 call    ┌──────────┐
 │ text box   │ ──────────────▶ │ adds your key (env/.env)│ ──────────▶ │   Jev    │
-│ 200 cells  │                 │ cache · daily cap · log │  200 nouls  │ System 1 │
+│ 200 cells  │                 │ cache · daily cap · log │ 200 yes/no  │ System 1 │
 │ threshold  │ ◀────────────── │ never sends key back    │ ◀────────── │          │
 └────────────┘  200 probs      └─────────────────────────┘  ~200 ms    └──────────┘
 ```
@@ -117,23 +117,28 @@ All optional. Set as environment variables or in `.env`.
 | `JEV_DAILY_TOKEN_CAP` | `5000000` | Stop calling after this many input tokens per day (all users) |
 | `JEV_USER_DAILY_TOKEN_CAP` | `1000000` | Per signed-in user (sign-in mode only) |
 | `JEV_USAGE_FILE` | `~/.config/jev/usage.jsonl` | Usage log |
+| `JEV_TIMEOUT_MS` | `15000` | Give up on a TypeSafe call after this long |
+| `JEV_MODEL` | `jev-latest` | Model id sent to TypeSafe |
+| `LOG_HASH_SALT` | random per start | Key for the text fingerprint in sign-in audit logs |
 | `AUTH_HEADER` | – | Header carrying the signed-in email (e.g. `x-goog-authenticated-user-email` behind Google IAP). Turns on sign-in mode and structured audit logs. |
 | `ALLOWED_DOMAIN` | – | Only allow emails at this domain |
 | `NOTICE` | – | Banner text shown under the wall |
 
 ## Hosting it for a team
 
-Local mode has **no sign-in**: anyone who can reach the port can spend your key. To share it, put sign-in in front. A ready script deploys to **Google Cloud Run behind Identity-Aware Proxy**, limited to one Google Workspace domain, with the key in Secret Manager, per-user caps, and every action logged to Cloud Logging:
+Local mode has **no sign-in**: anyone who can reach the port can spend your key. To share it, put sign-in in front.
+
+> Sign-in mode trusts the `AUTH_HEADER` header, so the server must only be reachable through the proxy that sets it (on Cloud Run, IAP is the only invoker). Never expose a sign-in-mode server directly. A ready script deploys to **Google Cloud Run behind Identity-Aware Proxy**, limited to one Google Workspace domain, with the key in Secret Manager, per-user caps, and every action logged to Cloud Logging:
 
 ```bash
 PROJECT=my-gcp-project DOMAIN=example.edu TYPESAFE_API_KEY=ts-... ./deploy/cloudrun.sh
 ```
 
-It scales to zero, so it costs nothing when nobody is using it.
+It scales to zero, so it costs nothing when nobody is using it. Caps there are best effort: they live in memory and reset when the instance restarts, so also set a spending limit in your TypeSafe account. Sign-in mode writes an audit line per action to Cloud Logging: the user's email, the question set, text length and a keyed fingerprint of the text (not the text itself).
 
 ## Honest limits
 
-- **Probabilities, not facts.** Jev is calibrated, but it's a fast judgment, not research. Treat differences under ~0.1 as noise, and don't set thresholds finer than that.
+- **Probabilities, not facts.** TypeSafe trains Jev for calibrated probabilities (we haven't measured that here), but it's a fast judgment, not research. Treat differences under ~0.1 as noise, and don't set thresholds finer than that.
 - **Soft concepts under-fire** when the text only implies them. Name the concrete thing in the question ("Does it ask for gift cards?") instead of the vague one ("Is it shady?").
 - **Your text goes to TypeSafe.** Read their [privacy policy](https://typesafe.ai/legal/privacy-policy) before pasting anything private.
 - Latency figures were measured on `jev-1.14` from a US home connection; yours will vary.

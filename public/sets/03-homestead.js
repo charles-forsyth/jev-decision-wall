@@ -115,7 +115,7 @@
       'Pressure drop|Does it mention barometric pressure?',
       'Good work weather|Is the weather good for outdoor work?',
       'Stay inside|Should people stay inside because of weather?',
-      'Weather irrelevant|Is weather irrelevant to this note?',
+      'Wind chill|Does wind make the cold more dangerous for people or animals?',
     ]},
     { name: 'Machines & Vehicles', q: [
       'Truck|Does it involve a truck?',
@@ -142,7 +142,7 @@
       'Sat unused|Did a machine sit unused for a while?',
       'Sharp/blade|Does it involve sharpening or blades?',
       'Machine fine|Is the machine working fine?',
-      'No machines|Are no machines involved?',
+      'Diesel gelling|Could cold weather thicken diesel or stop a diesel engine?',
     ]},
     { name: 'Power, Water & Tech', q: [
       'Power outage|Does it involve a power outage?',
@@ -223,7 +223,7 @@
       'Morning task|Is this a morning task?',
       'Evening task|Is this an evening task?',
       'Can wait|Can this wait without harm?',
-      'Nothing to do|Is there nothing to do?',
+      'Needs supplies|Does a task need supplies that may not be on hand?',
     ]},
   ],
 });

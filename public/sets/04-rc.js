@@ -88,7 +88,7 @@
       'Tier low|Is this low-risk data?',
       'Security review|Should the security office review this?',
       'Compliance gap|Is there a likely compliance gap right now?',
-      'No sensitive data|Is there no sensitive data involved?',
+      'Data retention|Does the request involve how long data must be kept?',
     ]},
     { name: 'Money & Cost', q: [
       'Funding named|Is a funding source named?',
@@ -115,7 +115,7 @@
       'Billing confusion|Is the person confused about billing?',
       'Refund ask|Are they asking for a refund or credit?',
       'Value high|Is this likely high value for the money?',
-      'No cost issue|Is cost not an issue here?',
+      'Cost surprise|Is the person surprised by a cost or charge?',
     ]},
     { name: 'Urgency & Impact', q: [
       'Deadline|Is a deadline mentioned?',

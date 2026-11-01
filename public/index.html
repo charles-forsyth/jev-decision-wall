@@ -28,10 +28,10 @@
     </div>
   </div>
   <div class="hud">
-    <div class="hud-cell"><span class="k">gates</span><span class="v" id="hGates">200</span></div>
-    <div class="hud-cell"><span class="k">calls</span><span class="v">1</span></div>
+    <div class="hud-cell"><span class="k">questions / call</span><span class="v" id="hGates">200</span></div>
+    <div class="hud-cell"><span class="k">calls made</span><span class="v" id="hCalls">0</span></div>
     <div class="hud-cell"><span class="k">latency</span><span class="v" id="hMs">—</span></div>
-    <div class="hud-cell"><span class="k">per gate</span><span class="v" id="hPer">—</span></div>
+    <div class="hud-cell"><span class="k">time ÷ 200</span><span class="v" id="hPer">—</span></div>
     <div class="hud-cell spark"><span class="k">last 40 calls</span><svg id="spark" viewBox="0 0 120 26" preserveAspectRatio="none"></svg></div>
     <div class="hud-cell"><span class="k" id="hJevK">jev</span><span class="v" id="hJev"><i class="dot"></i>…</span></div>
   </div>
@@ -44,10 +44,10 @@
   </div>
   <section class="composer">
     <div class="field" id="field">
-      <textarea id="input" rows="1" spellcheck="false" autocomplete="off" placeholder="Type or paste anything…"></textarea>
+      <textarea id="input" rows="1" spellcheck="false" autocomplete="off" aria-label="Text to analyze" placeholder="Type or paste anything… 200 questions are answered every time you pause"></textarea>
       <div class="field-foot">
         <div class="samples" id="samples"></div>
-        <div class="field-meta"><span id="chars">0 chars</span><span class="sep">·</span><span id="state">idle</span></div>
+        <div class="field-meta"><span id="chars">0 chars</span><span class="sep">·</span><span id="state" role="status" aria-live="polite">idle</span></div>
       </div>
       <div class="scan" id="scan"></div>
     </div>
@@ -62,10 +62,10 @@
     <span class="litcount"><b id="lit">0</b> of 200 lit</span>
     <div class="seg" id="sortSeg"><button data-s="cat" class="on">Category order</button><button data-s="heat">Sort by heat</button></div>
     <div class="seg" id="viewSeg"><button data-v="heat" class="on">Heatmap</button><button data-v="lit">Lit only</button></div>
-    <button class="burst" id="burstBtn" title="Run every question set at once: 7 parallel calls, 1,400 questions">Fire all 7 sets · 1,400 gates</button>
+    <button class="burst" id="burstBtn" title="Run every question set at once: 7 parallel calls, 1,400 questions">Fire all 7 sets · 1,400 questions</button>
   </section>
 
-  <section class="wall" id="wall"></section>
+  <section class="wall" id="wall" aria-label="200 questions, brightness = probability of yes"></section>
 
   <footer class="foot">
     <span class="notice" id="notice">Text you type is sent to the TypeSafe API using the key configured on this server. Use made-up or public text.</span>
@@ -74,7 +74,7 @@
   </footer>
 </main>
 
-<aside class="drawer" id="drawer" aria-hidden="true">
+<aside class="drawer" id="drawer" aria-hidden="true" role="dialog" aria-label="Question detail">
   <button class="x" id="dx" aria-label="close">×</button>
   <div class="d-cat" id="dCat"></div>
   <h2 id="dLab"></h2>
@@ -89,12 +89,12 @@
   <pre class="d-json" id="dJson"></pre>
 </aside>
 
-<div class="modal" id="burst" aria-hidden="true">
+<div class="modal" id="burst" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Parallel burst results">
   <div class="modal-in">
     <button class="x" id="bx" aria-label="close">×</button>
     <div class="b-head"><div><div class="kicker">parallel burst</div><h2>Seven question sets, all at once</h2></div><div class="b-stat" id="bStat"></div></div>
     <div class="b-grid" id="bGrid"></div>
-    <p class="b-note">Seven requests leave together, 200 questions each. The wall-clock time is about the same as a single call. (An exact repeat of a recent input can come back in ~10 ms from TypeSafe's own cache.) Click a set to open it.</p>
+    <p class="b-note">Seven requests leave together, 200 questions each. The wall-clock time is about the same as a single call. (An exact repeat of a recent input can come back in a few ms from TypeSafe's own cache.) Click a set to open it.</p>
   </div>
 </div>
 

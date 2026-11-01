@@ -1,6 +1,6 @@
 {
   "name": "jev-decision-wall",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Type anything. 200 yes/no judgments light up in ~200 ms from one parallel call to TypeSafe Jev.",
   "main": "server.js",
   "bin": { "jev-decision-wall": "server.js" },
