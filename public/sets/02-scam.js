@@ -88,7 +88,7 @@
       'Tax refund|Does it promise a tax refund?',
       'Escrow claim|Does it claim payment is protected by escrow or a buyer program?',
       'Amount specific|Does it name a specific dollar amount?',
-      'No money involved|Is there no request for money at all?',
+      'Prepaid debit|Does it ask the reader to load or buy a prepaid debit card?',
     ]},
     { name: 'Data Grab', q: [
       'Asks password|Does it ask for a password?',
@@ -115,7 +115,7 @@
       'Contacts|Does it ask for information about the reader\'s contacts?',
       'Location ask|Does it ask where the reader is or will be?',
       'Profile building|Does it seem to be gathering details for later use?',
-      'Asks nothing|Does it ask for no information at all?',
+      'Asks to confirm|Does it ask the reader to confirm a purchase or charge they did not make?',
     ]},
     { name: 'Too Good To Be True', q: [
       'Prize won|Does it say the reader won a prize or lottery?',
@@ -146,8 +146,8 @@
     ]},
     { name: 'Language Tells', q: [
       'Misspellings|Does the text contain misspellings?',
-      'Odd grammar|Does it have odd grammar for a professional sender?',
-      'Wrong idioms|Does it use phrases a native speaker would not?',
+      'Style mismatch|Does the writing style clash with the organization it claims to be from?',
+      'Missing specifics|Does it omit details a real sender would include, such as an order number or the last digits of an account?',
       'Weird capitals|Does it use odd capitalization?',
       'Excess punctuation|Does it use excessive punctuation like !!! or ???',
       'Odd link domain|Does it contain a link with a suspicious or lookalike domain?',

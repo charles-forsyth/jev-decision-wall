@@ -88,7 +88,7 @@
       'Needs rotate|Should credentials be rotated?',
       'Forensics|Should evidence be preserved?',
       'False positive|Could this be a false positive?',
-      'No security issue|Is there no security issue?',
+      'Lateral movement|Could an intruder use this to move to other hosts?',
     ]},
     { name: 'Severity', q: [
       'Critical|Is this critical?',

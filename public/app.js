@@ -4,7 +4,7 @@ const SETS = window.JEV_SETS;
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const fmtP = p => p == null ? '—' : p >= 0.995 ? '.99' : p < 0.005 ? '.00' : p.toFixed(2).slice(1);
+const fmtP = p => (p == null || Number.isNaN(p)) ? '—' : p >= 0.995 ? '.99' : p < 0.005 ? '.00' : p.toFixed(2).slice(1);
 
 // ---------- model ----------
 for (const s of SETS) {
@@ -92,11 +92,12 @@ function paint(flashChanges, prev) {
     order.forEach(it => cells.appendChild(S.cellEls[it.id]));
   }
   for (const it of s.items) {
-    const el = S.cellEls[it.id]; const p = a ? a[it.id] : 0;
+    const el = S.cellEls[it.id]; const p = a ? (a[it.id] ?? 0) : 0;
     el.style.setProperty('--p', p.toFixed(3));
     $('.n', el).textContent = a ? fmtP(p) : '—';
     const on = a && p >= S.thr; if (on) lit++;
     el.classList.toggle('lit', !!on);
+    el.setAttribute('aria-label', `${it.label}: ${a ? Math.round(p * 100) + ' percent' + (on ? ', lit' : '') : 'no answer yet'}`);
     el.classList.toggle('dimmed', S.view === 'lit' && a && !on);
     if (flashChanges && prev && Math.abs((prev[it.id] ?? 0) - p) > 0.25) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
   }
@@ -116,7 +117,7 @@ function renderReadout() {
   const s = S.set, a = S.answers[s.id];
   if (!a) { $('#readout').innerHTML = '<span class="ghost">The strongest signals will line up here.</span>'; return; }
   // pick top signals with category diversity: best from each category first, then the rest
-  const sorted = [...s.items].filter(x => a[x.id] >= Math.max(S.thr, 0.5)).sort((x, y) => a[y.id] - a[x.id]);
+  const sorted = [...s.items].filter(x => a[x.id] >= S.thr).sort((x, y) => a[y.id] - a[x.id]);
   const seen = new Set(), pick = [];
   for (const it of sorted) if (!seen.has(it.ci)) { seen.add(it.ci); pick.push(it); }
   for (const it of sorted) if (pick.length < 14 && !pick.includes(it)) pick.push(it);
@@ -134,8 +135,8 @@ function onInput(now) {
   autosize();
   clearTimeout(S.timer);
   const text = inp.value.trim();
-  if (!text) { S.answers[S.set.id] = null; S.lastText[S.set.id] = ''; paint(false); setState('idle'); return; }
-  setState('typing…');
+  if (!text) { if (S.ctrl) S.ctrl.abort(); S.seq++; S.answers[S.set.id] = null; S.lastText[S.set.id] = ''; $('#wall').classList.remove('stale'); paint(false); setState('idle'); return; }
+  setState('typing…'); $('#wall').classList.add('stale');
   S.timer = setTimeout(() => ask(), now ? 0 : 380);   // debounce: Jev runs on pauses, never per keystroke
 }
 inp.addEventListener('input', () => onInput(false));
@@ -149,11 +150,12 @@ async function callJev(set, text, signal, fresh) {
   if (!fresh && S.cache.has(key)) return { ...S.cache.get(key), cached: true };
   const t0 = performance.now();
   const r = await fetch('/api/jev', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...set.request(text), set: set.id, mode: fresh ? 'burst' : 'type', fresh: !!fresh }), signal });
-  const d = await r.json();
+  let d; try { d = await r.json(); } catch { throw new Error(r.ok ? 'bad response from server' : `server error ${r.status}`); }
   if (!r.ok) throw new Error(d.error || d.detail || ('HTTP ' + r.status));
+  if (!d.answers) throw new Error('no answers in response');
   const rt = Math.round(performance.now() - t0);
   const up = +r.headers.get('X-Upstream-Ms') || rt;
-  const answers = Object.fromEntries(Object.entries(d.answers).map(([k, v]) => [k, v.noul]));
+  const answers = Object.fromEntries(Object.entries(d.answers).map(([k, v]) => [k, typeof v?.noul === 'number' ? v.noul : 0]));
   const out = { answers, ms: up, rt, usage: d.usage, model: d.model };
   S.cache.set(key, out); if (S.cache.size > 300) S.cache.delete(S.cache.keys().next().value);
   return out;
@@ -168,20 +170,25 @@ async function ask(force) {
   const waitT = setTimeout(() => Object.values(S.cellEls).forEach(c => c.classList.add('wait')), 120);
   try {
     const res = await callJev(set, text, ctrl.signal);
-    if (my !== S.seq || set !== S.set) return;   // a newer request won; drop this one
+    if (my !== S.seq || set !== S.set || inp.value.trim() !== text) return;   // a newer request won, or the text changed; drop this one
+    $('#wall').classList.remove('stale');
     const prev = S.answers[set.id];
     S.answers[set.id] = res.answers; S.lastText[set.id] = text;
     pushHistory(set, text, res.answers);
     paint(true, prev);
     if (!res.cached) { noteLatency(res.ms); }
-    setState(res.cached ? `cached · ${S.lat.length ? S.lat[S.lat.length - 1] : '?'} ms first time` : `200 answers · ${res.ms} ms · ${res.usage.input_tokens.toLocaleString()} tokens`);
-    $('#hMs').textContent = res.cached ? 'cache' : res.ms + ' ms';
-    $('#hPer').textContent = res.cached ? '0 ms' : (res.ms / 200).toFixed(2) + ' ms';
+    if (res.cached) { setState(`shown from cache (answered earlier in ${res.ms} ms)`); }
+    else {
+      setState(`200 answers · ${res.ms} ms · ${res.usage.input_tokens.toLocaleString()} tokens`);
+      $('#hMs').textContent = res.ms + ' ms';
+      $('#hPer').textContent = (res.ms / 200).toFixed(2) + ' ms';
+      S.calls = (S.calls || 0) + 1; $('#hCalls').textContent = S.calls;
+    }
     beams(set);
     refreshUsage();
   } catch (e) {
     if (e.name === 'AbortError') return;
-    setState('error: ' + e.message);
+    setState('error: ' + e.message); $('#wall').classList.add('stale');
   } finally {
     clearTimeout(waitT);
     if (my === S.seq) { $('#scan').classList.remove('on'); $('#hJev .dot')?.classList.remove('busy'); Object.values(S.cellEls).forEach(c => c.classList.remove('wait')); }
@@ -255,12 +262,12 @@ function tick(now) {
 }
 
 // ---------- controls ----------
-$('#thr').addEventListener('input', e => { S.thr = +e.target.value; $('#thrV').textContent = S.thr.toFixed(2); paint(false); if (S.drawerId) openDrawer(S.drawerId); });
+$('#thr').addEventListener('input', e => { S.thr = +e.target.value; $('#thrV').textContent = S.thr.toFixed(2); paint(false); if (S.drawerId) openDrawer(S.drawerId, true); });
 $('#sortSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.sort = b.dataset.s; $$('#sortSeg button').forEach(x => x.classList.toggle('on', x === b)); buildWall(); paint(false); });
 $('#viewSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.view = b.dataset.v; $$('#viewSeg button').forEach(x => x.classList.toggle('on', x === b)); paint(false); });
 
 // ---------- drawer ----------
-function openDrawer(id) {
+function openDrawer(id, quiet) {
   const s = S.set, it = s.items.find(x => x.id === id), a = S.answers[s.id]; S.drawerId = id;
   const p = a ? a[id] : null;
   $('#dCat').textContent = `${s.name} · ${it.cat}`;
@@ -277,17 +284,19 @@ function openDrawer(id) {
   const h = (S.history[s.id] || []).slice().reverse();
   $('#dHist').innerHTML = h.length ? h.map(x => `<div class="hrow"><span title="${esc(x.text)}">${esc(x.text.slice(0, 60))}</span><div class="hb"><i style="width:${x.answers[id] * 100}%"></i></div><b>${fmtP(x.answers[id])}</b></div>`).join('') : '<span style="color:var(--dim);font-size:12px">no inputs yet</span>';
   $('#dJson').textContent = JSON.stringify({ [id]: { type: 'noul', instructions: it.question + ' (about `text`)' } }, null, 2) + (a ? `\n\n→ { "noul": ${p.toFixed(4)} }` : '');
-  track('open_gate', it.label); $('#drawer').classList.add('open'); $('#drawer').setAttribute('aria-hidden', 'false');
+  if (!quiet) track('open_gate', it.label); $('#drawer').classList.add('open'); $('#drawer').setAttribute('aria-hidden', 'false');
 }
 document.addEventListener('pointerdown', e => { if (S.drawerId && !e.target.closest('#drawer, .cell, .pill')) { $('#drawer').classList.remove('open'); S.drawerId = null; } });
 $('#dx').onclick = () => { $('#drawer').classList.remove('open'); S.drawerId = null; };
-addEventListener('keydown', e => { if (e.key === 'Escape') { $('#drawer').classList.remove('open'); S.drawerId = null; $('#burst').classList.remove('open'); } });
+// burst dialog focus management
+function closeBurst() { $('#burst').classList.remove('open'); $('#burst').setAttribute('aria-hidden', 'true'); $('#burstBtn').focus(); }
+addEventListener('keydown', e => { if (e.key === 'Escape') { $('#drawer').classList.remove('open'); S.drawerId = null; if ($('#burst').classList.contains('open')) closeBurst(); } });
 
 // ---------- burst: all seven sets in parallel ----------
 $('#burstBtn').onclick = async () => {
   const text = inp.value.trim();
   if (!text) { inp.focus(); setState('type something first'); return; }
-  track('burst'); const m = $('#burst'); m.classList.add('open');
+  track('burst'); const m = $('#burst'); m.classList.add('open'); m.setAttribute('aria-hidden', 'false'); setTimeout(() => $('#bx').focus(), 50);
   $('#bGrid').innerHTML = SETS.map(s => `<div class="b-set" data-id="${s.id}" style="--th:${s.hue}"><div class="t">${s.glyph} ${esc(s.name)}<span>…</span></div>
     <div class="b-mini">${s.items.map(() => '<i style="--p:0"></i>').join('')}</div><div class="top3"></div></div>`).join('');
   $('#bStat').innerHTML = 'firing 7 requests…';
@@ -297,11 +306,12 @@ $('#burstBtn').onclick = async () => {
     const card = $(`.b-set[data-id="${s.id}"]`);
     try {
       const res = await callJev(s, text, undefined, true);   // fresh: skip both caches so the timing is honest
-      S.answers[s.id] = res.answers; S.lastText[s.id] = text; pushHistory(s, text, res.answers);
+      if (inp.value.trim() === text) { S.answers[s.id] = res.answers; S.lastText[s.id] = text; }
+      pushHistory(s, text, res.answers);
       doneN++; tok += res.usage.input_tokens; sumMs += res.ms;
       $('.t span', card).textContent = `${res.ms} ms`;
-      $$('.b-mini i', card).forEach((i, k) => setTimeout(() => i.style.setProperty('--p', res.answers[s.items[k].id].toFixed(3)), k * 2));
-      const top = [...s.items].sort((x, y) => res.answers[y.id] - res.answers[x.id]).slice(0, 3);
+      $$('.b-mini i', card).forEach((i, k) => setTimeout(() => i.style.setProperty('--p', (res.answers[s.items[k].id] ?? 0).toFixed(3)), k * 2));
+      const top = [...s.items].sort((x, y) => (res.answers[y.id] ?? 0) - (res.answers[x.id] ?? 0)).slice(0, 3);
       $('.top3', card).innerHTML = top.map(x => `<b>${esc(x.label)}</b> ${fmtP(res.answers[x.id])}`).join(' · ');
     } catch (e) { $('.t span', card).textContent = 'error'; $('.top3', card).textContent = e.message; }
   }));
@@ -309,8 +319,16 @@ $('#burstBtn').onclick = async () => {
   $('#bStat').innerHTML = `<b>${(doneN * 200).toLocaleString()}</b> answers · <b>${wall} ms</b> wall clock<br>${doneN} calls · sum of call times ${sumMs.toLocaleString()} ms · ${tok.toLocaleString()} tokens`;
   $('#burstBtn').disabled = false; paint(false); refreshUsage();
 };
-$('#bGrid').addEventListener('click', e => { const c = e.target.closest('.b-set'); if (!c) return; $('#burst').classList.remove('open'); selectSet(SETS.find(s => s.id === c.dataset.id)); });
-$('#bx').onclick = () => $('#burst').classList.remove('open');
+$('#bGrid').addEventListener('click', e => { const c = e.target.closest('.b-set'); if (!c) return; closeBurst(); selectSet(SETS.find(s => s.id === c.dataset.id)); });
+$('#bx').onclick = closeBurst;
 
 // ---------- boot ----------
-renderTabs(); selectSet(SETS[0]); refreshUsage(); autosize(); inp.focus();
+const qs = new URLSearchParams(location.search);
+const startSet = SETS.find(s => s.id === qs.get('set')) || SETS[0];
+renderTabs(); selectSet(startSet); refreshUsage().then(() => {
+  // First impression: never land on an empty wall. Use ?text= if given, else run the first sample once.
+  const t = qs.get('text');
+  if (t) { inp.value = t.slice(0, 4000); autosize(); onInput(true); }
+  else if (S.jevOk && !inp.value) { inp.value = startSet.samples[0].text; autosize(); onInput(true); }
+});
+autosize(); inp.focus();

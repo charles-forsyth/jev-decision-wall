@@ -88,7 +88,7 @@
       'Travel timing|Does the text involve travel dates or trip timing?',
       'Time zone|Could time zones matter for this message?',
       'Waiting long|Has the writer apparently been waiting a long time for something?',
-      'Timeless|Could this message be read any time without loss?',
+      'Expires soon|Does something in the text stop being available or valid soon?',
       'Season|Does the text refer to a season of the year?',
     ]},
     { name: 'Tone', q: [

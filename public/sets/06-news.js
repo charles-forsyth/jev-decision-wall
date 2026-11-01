@@ -223,7 +223,7 @@
       'Ask expert|Should readers ask an expert?',
       'Warn family|Should readers warn family about it?',
       'Act now|Does it demand action now?',
-      'Nothing new|Is there nothing new here?',
+      'Fact-check site|Would a fact-checking site likely have covered this?',
     ]},
   ],
 });
