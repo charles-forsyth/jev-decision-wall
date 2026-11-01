@@ -1,0 +1,9 @@
+name: Bug report
+description: Something doesn't work
+labels: [bug]
+body:
+  - type: textarea
+    attributes: { label: What happened?, description: Steps, what you expected, what you saw. Never paste your API key. }
+    validations: { required: true }
+  - type: input
+    attributes: { label: Node version and OS }

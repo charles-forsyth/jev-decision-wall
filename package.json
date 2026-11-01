@@ -1,0 +1,18 @@
+{
+  "name": "jev-decision-wall",
+  "version": "1.0.0",
+  "description": "Type anything. 200 yes/no judgments light up in ~200 ms from one parallel call to TypeSafe Jev.",
+  "main": "server.js",
+  "bin": { "jev-decision-wall": "server.js" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/",
+    "check": "node scripts/check-sets.js && node --test test/"
+  },
+  "engines": { "node": ">=20" },
+  "keywords": ["jev", "typesafe", "llm", "ai", "classification", "heatmap", "parallel", "system-one", "demo"],
+  "author": "Charles Forsyth",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/charles-forsyth/jev-decision-wall.git" },
+  "homepage": "https://charles-forsyth.github.io/jev-decision-wall/"
+}

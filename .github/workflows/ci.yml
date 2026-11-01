@@ -1,0 +1,31 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+permissions: { contents: read }
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: { node: [20, 22] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ matrix.node }}" }
+      - run: npm run check
+      - name: Syntax check front end
+        run: node --check public/app.js && for f in public/sets/*.js; do node --check "$f"; done
+      - name: Smoke test (no key -> helpful 500, page serves)
+        run: |
+          node server.js & sleep 1
+          curl -sf http://127.0.0.1:8770/ | grep -q "Decision"
+          curl -s http://127.0.0.1:8770/api/health | grep -q '"key":false'
+      - name: Docker build
+        run: docker build -t jev-decision-wall .
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }

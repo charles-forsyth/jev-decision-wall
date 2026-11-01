@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decision Wall: 200 questions, one call, a quarter second</title>
+<meta name="description" content="Type anything. 200 yes/no judgments light up as a live heatmap, answered in one parallel call to TypeSafe Jev. Open source, zero dependencies, bring your own key.">
+<link rel="canonical" href="https://charles-forsyth.github.io/jev-decision-wall/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://charles-forsyth.github.io/jev-decision-wall/">
+<meta property="og:title" content="Decision Wall: 200 questions, one call, a quarter second">
+<meta property="og:description" content="A live heatmap of 200 parallel AI judgments from TypeSafe Jev. Open source, bring your own key.">
+<meta property="og:image" content="https://charles-forsyth.github.io/jev-decision-wall/media/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://charles-forsyth.github.io/jev-decision-wall/media/og.jpg">
+<meta name="theme-color" content="#05060a">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<header class="nav">
+  <a class="brand" href="#top"><span class="mark" aria-hidden="true"><b></b><b></b><b></b><b></b></span>Decision Wall</a>
+  <nav><a href="#demo">Demo</a><a href="#how">How it works</a><a href="#sets">Question sets</a><a href="#start">Quick start</a><a class="gh" href="https://github.com/charles-forsyth/jev-decision-wall">GitHub ↗</a></nav>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <p class="kicker">Open source · TypeSafe Jev · System One</p>
+    <h1>200 questions.<br><em>One call.</em> A quarter second.</h1>
+    <p class="lede">Type anything. Two hundred yes/no judgments light up as a live heatmap, all answered in a single parallel call to Jev. It's the fastest way to <i>feel</i> what a System One model does.</p>
+    <div class="cta"><a class="btn" href="#start">Run it locally</a><a class="btn ghost" href="https://github.com/charles-forsyth/jev-decision-wall">Star on GitHub</a></div>
+    <dl class="stats">
+      <div><dt>questions per call</dt><dd data-count="200">200</dd></div>
+      <div><dt>typical latency</dt><dd>~200<small>ms</small></dd></div>
+      <div><dt>7 sets in parallel</dt><dd>1,400<small>answers</small></dd></div>
+      <div><dt>dependencies</dt><dd>0</dd></div>
+    </dl>
+  </section>
+
+  <section id="demo" class="demo">
+    <div class="frame"><video controls preload="metadata" playsinline poster="media/poster.jpg"><source src="media/demo.mp4" type="video/mp4"></video></div>
+    <p class="cap">70-second demo, recorded live against the real API. Every number on screen is a real Jev answer.</p>
+  </section>
+
+  <section id="how" class="grid3">
+    <article><h3>Ask wide, not deep</h3><p>Jev answers questions rather than writing text. Asking 200 questions about one text costs nearly the same as asking one: about 185 ms for 1, about 200 ms for 50, about 150–300 ms for 200.</p></article>
+    <article><h3>Probabilities in, decisions in code</h3><p>Every cell is a calibrated probability. Slide the threshold and the wall changes instantly with no new call. The model gives the evidence once; your code decides what counts.</p></article>
+    <article><h3>Your key stays home</h3><p>A tiny Node server holds your key and proxies the calls, with a cache, a daily token cap and a usage log. The browser never sees the key.</p></article>
+  </section>
+
+  <section class="shots">
+    <figure><a href="media/01-hero-scam.jpg"><img src="media/01-hero-scam.jpg" alt="Scam Shield reading a grandparent scam" loading="lazy"></a><figcaption><b>Scam Shield</b> · grandparent scam .98, gift cards .98, urgency .98</figcaption></figure>
+    <figure><a href="media/02-wall-scam.jpg"><img src="media/02-wall-scam.jpg" alt="Full heatmap of 200 questions" loading="lazy"></a><figcaption><b>The wall</b> · 8 categories × 25 questions</figcaption></figure>
+    <figure><a href="media/04-drawer.jpg"><img src="media/04-drawer.jpg" alt="Question detail drawer" loading="lazy"></a><figcaption><b>Click any cell</b> · question, score, rank, history</figcaption></figure>
+    <figure><a href="media/05-burst.jpg"><img src="media/05-burst.jpg" alt="Seven sets fired in parallel" loading="lazy"></a><figcaption><b>Parallel burst</b> · 1,400 answers in 283 ms</figcaption></figure>
+  </section>
+
+  <section id="sets" class="sets">
+    <h2>Seven question sets, 1,400 questions</h2>
+    <p class="sub">Each is exactly 200 unique questions in 8 categories, with sample texts to try. Writing your own is one JavaScript file.</p>
+    <ul>
+      <li style="--h:205"><b>✉ Everyday Signal</b><span>Any message: what it asks, when, how it feels, what it risks</span></li>
+      <li style="--h:350"><b>⛨ Scam Shield</b><span>Pressure, impersonation, payment rails, data grabs, verdict</span></li>
+      <li style="--h:105"><b>❦ Homestead</b><span>Livestock, predators, soil, weather, machines, power, safety</span></li>
+      <li style="--h:265"><b>⌬ Research Computing</b><span>Workload, data risk, cloud cost, routing, next step</span></li>
+      <li style="--h:25"><b>⚡ Ops &amp; Security</b><span>Log lines and CVEs triaged like an SRE plus a security analyst</span></li>
+      <li style="--h:180"><b>◎ News &amp; Claims</b><span>A media-literacy x-ray: claims, framing, credibility, emotion</span></li>
+      <li style="--h:300"><b>✦ Story Engine</b><span>Genre, character, stakes, mood, craft, best format</span></li>
+    </ul>
+  </section>
+
+  <section id="start" class="start">
+    <h2>Run it in a minute</h2>
+    <p class="sub">Node 20+ and a <a href="https://typesafe.ai">TypeSafe</a> API key. No <code>npm install</code>.</p>
+<pre><code><span class="c"># clone</span>
+git clone https://github.com/charles-forsyth/jev-decision-wall.git
+cd jev-decision-wall
+<span class="c"># add your key (.env is git-ignored)</span>
+cp .env.example .env
+<span class="c"># run</span>
+node server.js        <span class="c"># → http://127.0.0.1:8770</span></code></pre>
+    <p class="sub">A full wall is about 4,000 input tokens, roughly <b>$0.0002</b> at TypeSafe's published price. A daily cap is on by default. Hosting for a team? The repo includes a Cloud Run + Google sign-in deploy script.</p>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Built by <a href="https://charles-forsyth.github.io/">Charles Forsyth</a> · MIT license</span>
+  <span>Not affiliated with TypeSafe. Jev is their model.</span>
+</footer>
+</body>
+</html>

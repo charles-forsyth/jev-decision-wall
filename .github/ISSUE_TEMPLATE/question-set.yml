@@ -1,0 +1,10 @@
+name: Question set idea
+description: Propose a new set of 200 questions
+labels: [question-set]
+body:
+  - type: input
+    attributes: { label: Set name }
+    validations: { required: true }
+  - type: textarea
+    attributes: { label: Eight categories, description: One per line, with a few example questions. }
+    validations: { required: true }
