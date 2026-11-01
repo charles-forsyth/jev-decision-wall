@@ -6,8 +6,8 @@
   "bin": { "jev-decision-wall": "server.js" },
   "scripts": {
     "start": "node server.js",
-    "test": "node --test test/",
-    "check": "node scripts/check-sets.js && node --test test/"
+    "test": "node --test test/server.test.js",
+    "check": "node scripts/check-sets.js && node --test test/server.test.js"
   },
   "engines": { "node": ">=20" },
   "keywords": ["jev", "typesafe", "llm", "ai", "classification", "heatmap", "parallel", "system-one", "demo"],
