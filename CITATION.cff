@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Decision Wall: ask 200 small yes/no questions at once"
+abstract: >-
+  An independent, open-source experiment in a way of using fast classifier
+  models such as TypeSafe's Jev: break a judgment into many small yes/no
+  questions, ask them all in one parallel call, and let code decide what
+  counts. Seven question sets of 200 questions render as a live heatmap,
+  with Explain, share links and a no-key replay mode. Not affiliated with
+  or endorsed by TypeSafe.
+authors:
+  - family-names: Forsyth
+    given-names: Charles E.
+    name-particle: III
+    orcid: "https://orcid.org/0000-0003-4872-0296"
+    affiliation: "University of California, Riverside"
+version: 1.2.3
+date-released: "2026-11-02"
+license: MIT
+repository-code: "https://github.com/charles-forsyth/jev-decision-wall"
+url: "https://charles-forsyth.github.io/jev-decision-wall/"
+keywords:
+  - large language models
+  - classification
+  - parallel inference
+  - heatmap
+  - decision support
+  - human-AI interaction
