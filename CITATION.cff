@@ -18,6 +18,14 @@ authors:
 version: 1.2.3
 date-released: "2026-11-02"
 license: MIT
+doi: "10.5281/zenodo.23874577"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.23874577"
+    description: "Concept DOI: always resolves to the newest release"
+  - type: doi
+    value: "10.5281/zenodo.23874578"
+    description: "Version 1.2.3"
 repository-code: "https://github.com/charles-forsyth/jev-decision-wall"
 url: "https://charles-forsyth.github.io/jev-decision-wall/"
 keywords:
