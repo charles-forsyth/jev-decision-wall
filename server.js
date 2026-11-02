@@ -42,6 +42,10 @@ const USAGE = env('JEV_USAGE_FILE', path.join(os.homedir(), '.config', 'jev', 'u
 const AUTH_HEADER = env('AUTH_HEADER', '').toLowerCase();
 const ALLOWED_DOMAIN = env('ALLOWED_DOMAIN', '').toLowerCase();
 const NOTICE = env('NOTICE', '');
+if (ALLOWED_DOMAIN && !AUTH_HEADER) {   // fail closed: a domain limit without a sign-in header would silently allow everyone
+  console.error('ALLOWED_DOMAIN is set but AUTH_HEADER is not, so the domain limit cannot be enforced. Set AUTH_HEADER (e.g. x-goog-authenticated-user-email) or unset ALLOWED_DOMAIN.');
+  process.exit(1);
+}
 const ROOT = path.join(__dirname, 'public');
 const HASH_SALT = env('LOG_HASH_SALT', crypto.randomBytes(16).toString('hex'));   // keyed hash: short texts can't be guessed from audit logs
 const MAX_Q = 220, MAX_STATE = 12000, MAX_Q_CHARS = 400, UPSTREAM_TIMEOUT_MS = num('JEV_TIMEOUT_MS', 15000);
@@ -69,6 +73,9 @@ function logUsage(rec) {
 }
 const userUse = new Map();
 let inflight = 0; const userInflight = new Map();   // reserved tokens for calls still in progress
+function pruneUsers() { const d = today(); for (const k of userUse.keys()) if (!k.startsWith(d + '|')) userUse.delete(k); }
+setInterval(pruneUsers, 3600_000).unref();
+
 
 // ---------- identity + audit (only when AUTH_HEADER is set) ----------
 function who(req) {
@@ -96,7 +103,13 @@ async function readBody(req, limit) {
   return Buffer.concat(chunks).toString('utf8');   // decode once, so multi-byte characters split across chunks stay intact
 }
 
-const server = http.createServer(async (req, res) => {
+const server = http.createServer((req, res) => {
+  handle(req, res).catch(err => {
+    console.error('handler error:', err && err.message);
+    try { if (!res.headersSent) json(res, 500, { error: 'internal error' }); else res.end(); } catch {}
+  });
+});
+async function handle(req, res) {
   let url;
   try { url = decodeURIComponent(req.url.split('?')[0]); } catch { return json(res, 400, { error: 'bad url' }); }
   if (url === '/healthz') return json(res, 200, { ok: true });
@@ -113,7 +126,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url === '/api/event' && req.method === 'POST') {
-    let e = {}; try { e = JSON.parse(await readBody(req, 4000)); } catch {}
+    let e = {}; try { e = JSON.parse(await readBody(req, 4000)); } catch { if (req.destroyed) return; }
     if (!e || typeof e !== 'object') e = {};
     const ev = String(e.event || '').replace(/[^a-z_]/g, '').slice(0, 30);
     if (['open_set', 'sample', 'burst', 'open_gate'].includes(ev)) audit(ev, user, { set: String(e.set || '').slice(0, 20), detail: String(e.detail || '').slice(0, 120) });
@@ -122,7 +135,8 @@ const server = http.createServer(async (req, res) => {
 
   if (url === '/api/jev' && req.method === 'POST') {
     let body;
-    try { body = JSON.parse(await readBody(req, 400000)); } catch (e) { return json(res, e.code || 400, { error: e.message || 'bad json' }); }
+    try { body = JSON.parse(await readBody(req, 400000)); }
+    catch (e) { if (req.destroyed && e.code !== 413) return; return json(res, e.code === 413 ? 413 : 400, { error: e.code === 413 ? 'too large' : 'bad json' }); }
     if (!body || typeof body !== 'object' || !body.questions || typeof body.questions !== 'object') return json(res, 400, { error: 'expected {state, questions}' });
     const questions = {};
     for (const [id, q] of Object.entries(body.questions)) {
@@ -131,6 +145,8 @@ const server = http.createServer(async (req, res) => {
       questions[id] = { type: 'noul', instructions: q.instructions };   // only yes/no questions are proxied
     }
     const nq = Object.keys(questions).length;
+    const qChars = Object.values(questions).reduce((n, q) => n + q.instructions.length, 0);
+    if (qChars > MAX_Q * 160) return json(res, 400, { error: 'questions too long in total' });
     if (!nq || nq > MAX_Q) return json(res, 400, { error: `need 1..${MAX_Q} questions` });
     if (JSON.stringify(body.state || '').length > MAX_STATE) return json(res, 400, { error: 'text too long (12k chars max)' });
     const key = apiKey();
@@ -145,20 +161,25 @@ const server = http.createServer(async (req, res) => {
     const ukey = today() + '|' + user, used = usedToday() + inflight, mine = (userUse.get(ukey) || 0) + (userInflight.get(ukey) || 0);
     if (user && mine >= USER_CAP) { audit('capped_user', user, meta); return json(res, 429, { error: `your daily limit is reached (${mine.toLocaleString()} tokens). It resets at midnight.` }); }
     if (used >= CAP) { audit('capped_global', user, meta); return json(res, 429, { error: `daily cap reached (${used.toLocaleString()} of ${CAP.toLocaleString()} tokens). Raise JEV_DAILY_TOKEN_CAP to continue.` }); }
-    inflight += EST_TOKENS_PER_CALL; userInflight.set(ukey, (userInflight.get(ukey) || 0) + EST_TOKENS_PER_CALL);
-    const release = () => { inflight -= EST_TOKENS_PER_CALL; userInflight.set(ukey, userInflight.get(ukey) - EST_TOKENS_PER_CALL); };
+    // Reserve an estimate before calling (about 4 characters per token, never less than the old flat 6,000),
+    // so parallel calls can't all pass the cap check at once. Released exactly once.
+    const est = Math.max(EST_TOKENS_PER_CALL, Math.ceil((JSON.stringify(out).length) / 3));
+    inflight += est; userInflight.set(ukey, (userInflight.get(ukey) || 0) + est);
+    let released = false;
+    const release = () => { if (released) return; released = true; inflight -= est; const v = (userInflight.get(ukey) || 0) - est; if (v > 0) userInflight.set(ukey, v); else userInflight.delete(ukey); };
     const t0 = Date.now();
     try {
       const r = await fetch(API_URL, { method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' }, body: JSON.stringify(out), signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) });
       const txt = await r.text(), ms = Date.now() - t0;
       let parsed = null, inTok = 0, outTok = 0;
       try { parsed = JSON.parse(txt); inTok = parsed.usage?.input_tokens || 0; outTok = parsed.usage?.output_tokens || 0; } catch {}
+      if (!r.ok && !inTok) inTok = 0;   // failed calls are not billed by TypeSafe
       logUsage({ ts: new Date().toISOString(), day: today(), app: 'jev-decision-wall', user, status: r.status, gates: nq, in: inTok, out: outTok, ms });
       release();
       if (user) userUse.set(ukey, (userUse.get(ukey) || 0) + inTok);
       audit('ask', user, { ...meta, ...tinfo, cache: 'miss', status: r.status, ms, in_tokens: inTok, out_tokens: outTok, model: parsed?.model });
       if (!AUTH_HEADER) console.log(`jev ${r.status} · ${nq} questions · ${ms} ms · ${inTok} input tokens · today ${usedToday().toLocaleString()}/${CAP.toLocaleString()}`);
-      if (!r.ok || !parsed) {
+      if (!r.ok || !parsed || !parsed.answers) {
         const msg = (parsed && (parsed.error?.message || parsed.error || parsed.detail)) || `HTTP ${r.status}`;
         return json(res, r.status >= 400 && r.status < 600 ? r.status : 502, { error: 'TypeSafe: ' + String(typeof msg === 'string' ? msg : JSON.stringify(msg)).slice(0, 300) });
       }
@@ -178,7 +199,7 @@ const server = http.createServer(async (req, res) => {
   if (p === '/index.html') audit('page_view', user);
   res.writeHead(200, { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache', ...SEC });
   fs.createReadStream(f).on('error', () => { if (!res.headersSent) res.writeHead(500); res.end(); }).pipe(res);
-});
+}
 
 server.requestTimeout = 30000; server.headersTimeout = 15000;
 if (require.main === module) {

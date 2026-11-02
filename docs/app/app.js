@@ -27,7 +27,9 @@ const S = {
   lat: [], seq: 0, ctrl: null, timer: null, jevOk: false,
   mode: 'live',       // 'live' (server with a key) or 'replay' (recorded answers, no key needed)
   explain: null,      // {text, set, parts, deltas[], ms}
+  src: {},            // setId -> 'live' | 'recorded' | 'shared' (where the shown answers came from)
 };
+const SRC_LABEL = { live: 'live Jev answers', recorded: 'recorded Jev answers (sample replay)', shared: 'from a shared link (not re-checked)' };
 const CODEC = window.JEV_CODEC, REPLAYS = window.JEV_REPLAYS || null;
 
 const track = (event, detail) => { if (S.mode !== 'live') return; try { fetch('/api/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ event, set: S.set.id, detail }), keepalive: true }); } catch {} };
@@ -57,7 +59,11 @@ $('#tabs').addEventListener('click', e => {
   selectSet(SETS.find(s => s.id === t.dataset.id)); track('open_set');
 });
 function selectSet(s) {
+  if (s !== S.set && S.ctrl) { S.ctrl.abort(); S.seq++; clearBusy(); }
   S.set = s;
+  if (typeof closeExplain === 'function') closeExplain();
+  if (S.drawerId) closeDrawer();
+  $('#flips').innerHTML = '';
   document.documentElement.style.setProperty('--hue', s.hue);
   $$('.tab').forEach(t => t.classList.toggle('on', t.dataset.id === s.id));
   $('#blurb').textContent = s.blurb;
@@ -138,7 +144,7 @@ function onInput(now) {
   autosize();
   clearTimeout(S.timer);
   const text = inp.value.trim();
-  if (!text) { if (S.ctrl) S.ctrl.abort(); S.seq++; S.answers[S.set.id] = null; S.lastText[S.set.id] = ''; $('#wall').classList.remove('stale'); paint(false); setState('idle'); return; }
+  if (!text) { if (S.ctrl) S.ctrl.abort(); S.seq++; clearBusy(); closeExplain(); S.answers[S.set.id] = null; S.lastText[S.set.id] = ''; $('#wall').classList.remove('stale'); $('#flips').innerHTML = ''; paint(false); setState('idle'); return; }
   setState('typing…'); $('#wall').classList.add('stale');
   if (S.explain && S.explain.text !== text) closeExplain();
   S.timer = setTimeout(() => ask(), now ? 0 : 380);   // debounce: Jev runs on pauses, never per keystroke
@@ -146,6 +152,7 @@ function onInput(now) {
 inp.addEventListener('input', () => onInput(false));
 inp.addEventListener('paste', () => setTimeout(() => onInput(true), 0));
 inp.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) onInput(true); });
+function clearBusy() { $('#scan').classList.remove('on'); $('#hJev .dot')?.classList.remove('busy'); Object.values(S.cellEls || {}).forEach(c => c.classList.remove('wait')); $('#state').classList.remove('busy'); }
 function setState(t, busy) { const el = $('#state'); el.textContent = t; el.classList.toggle('busy', !!busy); }
 
 // ---------- Jev ----------
@@ -184,10 +191,10 @@ async function ask(force) {
   const waitT = setTimeout(() => Object.values(S.cellEls).forEach(c => c.classList.add('wait')), 120);
   try {
     const res = await callJev(set, text, ctrl.signal);
-    if (my !== S.seq || set !== S.set || inp.value.trim() !== text) return;   // a newer request won, or the text changed; drop this one
+    if (my !== S.seq || set !== S.set || inp.value.trim() !== text) { if (my === S.seq) { clearBusy(); setState('idle'); } return; }   // stale result; drop it
     $('#wall').classList.remove('stale');
     const prev = S.answers[set.id];
-    S.answers[set.id] = res.answers; S.lastText[set.id] = text;
+    S.answers[set.id] = res.answers; S.lastText[set.id] = text; S.src[set.id] = res.recorded ? 'recorded' : 'live';
     pushHistory(set, text, res.answers);
     paint(true, prev);
     showFlips(set, prev, res.answers);
@@ -195,7 +202,7 @@ async function ask(force) {
     if (!res.cached) { noteLatency(res.ms); }
     if (res.cached) { setState(`shown from cache (answered earlier in ${res.ms} ms)`); }
     else {
-      setState(`200 answers · ${res.ms} ms · ${res.usage.input_tokens.toLocaleString()} tokens`);
+      setState(`200 answers · ${res.ms} ms · ${(res.usage?.input_tokens || 0).toLocaleString()} tokens`);
       $('#hMs').textContent = res.ms + ' ms';
       $('#hPer').textContent = (res.ms / 200).toFixed(2) + ' ms';
       S.calls = (S.calls || 0) + 1; $('#hCalls').textContent = S.calls;
@@ -207,7 +214,7 @@ async function ask(force) {
     setState(e.replayMiss ? e.message : 'error: ' + e.message); $('#wall').classList.add('stale');
   } finally {
     clearTimeout(waitT);
-    if (my === S.seq) { $('#scan').classList.remove('on'); $('#hJev .dot')?.classList.remove('busy'); Object.values(S.cellEls).forEach(c => c.classList.remove('wait')); }
+    if (my === S.seq) clearBusy();
   }
 }
 function pushHistory(set, text, answers) {
@@ -223,7 +230,9 @@ function noteLatency(ms) {
     S.lat.map((v, i) => i === S.lat.length - 1 ? `<circle cx="${(i / Math.max(1, S.lat.length - 1)) * w}" cy="${h - 2 - (v / max) * (h - 4)}" r="2.2" fill="var(--acc)"/>` : '').join('');
 }
 function enterReplay(why) {
+  if (S.ctrl) S.ctrl.abort(); S.seq++; clearBusy();
   S.mode = 'replay'; S.jevOk = false; document.body.classList.add('replay');
+  for (const k of Object.keys(S.answers)) if (S.src[k] === 'live') { S.answers[k] = null; S.lastText[k] = ''; }
   $('#hJev').innerHTML = '<i class="dot rec"></i>recorded';
   $('#hMs').textContent = '—'; $('#hPer').textContent = '—';
   $('#replayBar').hidden = false; $('#replayWhy').textContent = why;
@@ -232,7 +241,10 @@ function enterReplay(why) {
 async function refreshUsage() {
   if (S.mode === 'replay') return;
   try {
-    const r = await fetch('/api/health'); if (!r.ok) throw new Error('no server');
+    const r = await fetch('/api/health', { redirect: 'manual' });
+    const static404 = r.status === 404;
+    if (static404 && REPLAYS) return enterReplay('This copy has no server, so it plays real Jev answers recorded for the sample texts.');
+    if (!r.ok) throw Object.assign(new Error('server error ' + r.status), { transient: true });
     const d = await r.json();
     if (!d.key && REPLAYS) { $('#setup').hidden = false; return enterReplay('No API key on this server yet, so the samples below play recorded Jev answers.'); }
     S.jevOk = d.key && !d.blocked;
@@ -242,9 +254,10 @@ async function refreshUsage() {
     $('#usage').textContent = d.user
       ? `signed in as ${d.user} · you today ${(d.user_used || 0).toLocaleString()} of ${(d.user_cap || 0).toLocaleString()} tokens · all users ${d.used_today.toLocaleString()} · $${d.cost_today_usd.toFixed(4)}`
       : `today ${d.used_today.toLocaleString()} of ${d.cap.toLocaleString()} input tokens · $${d.cost_today_usd.toFixed(4)}`;
-  } catch {
-    if (REPLAYS) return enterReplay('This copy has no server, so it plays real Jev answers recorded for the sample texts.');
-    $('#hJev').innerHTML = '<i class="dot bad"></i>offline';
+  } catch (e) {
+    // Only a static host with no API at all (file:// or a page with no server) goes to recorded mode; anything else is a live server having a bad moment.
+    if (REPLAYS && !e.transient && location.protocol === 'file:') return enterReplay('This copy has no server, so it plays real Jev answers recorded for the sample texts.');
+    $('#hJev').innerHTML = '<i class="dot bad"></i>offline'; S.jevOk = false;
   }
 }
 
@@ -298,7 +311,7 @@ $('#viewSeg').addEventListener('click', e => { const b = e.target.closest('butto
 // ---------- drawer ----------
 function openDrawer(id, quiet) {
   const s = S.set, it = s.items.find(x => x.id === id), a = S.answers[s.id]; S.drawerId = id;
-  const p = a ? a[id] : null;
+  const p = a ? (a[id] ?? null) : null;
   $('#dCat').textContent = `${s.name} · ${it.cat}`;
   $('#dLab').textContent = it.label;
   $('#dQ').textContent = it.question;
@@ -311,15 +324,17 @@ function openDrawer(id, quiet) {
     $('#dVer').textContent = p >= S.thr ? `YES (≥ ${S.thr.toFixed(2)})` : `no (< ${S.thr.toFixed(2)})`;
   } else { $('#dRank').textContent = $('#dRankC').textContent = $('#dVer').textContent = '—'; }
   const h = (S.history[s.id] || []).slice().reverse();
-  $('#dHist').innerHTML = h.length ? h.map(x => `<div class="hrow"><span title="${esc(x.text)}">${esc(x.text.slice(0, 60))}</span><div class="hb"><i style="width:${x.answers[id] * 100}%"></i></div><b>${fmtP(x.answers[id])}</b></div>`).join('') : '<span style="color:var(--dim);font-size:12px">no inputs yet</span>';
-  $('#dJson').textContent = JSON.stringify({ [id]: { type: 'noul', instructions: it.question + ' (about `text`)' } }, null, 2) + (a ? `\n\n→ { "noul": ${p.toFixed(4)} }` : '');
+  $('#dHist').innerHTML = h.length ? h.map(x => `<div class="hrow"><span title="${esc(x.text)}">${esc(x.text.slice(0, 60))}</span><div class="hb"><i style="width:${(x.answers[id] ?? 0) * 100}%"></i></div><b>${fmtP(x.answers[id])}</b></div>`).join('') : '<span style="color:var(--dim);font-size:12px">no inputs yet</span>';
+  $('#dJson').textContent = JSON.stringify({ [id]: { type: 'noul', instructions: it.question + ' (about `text`)' } }, null, 2) + (p != null ? `\n\n→ { "noul": ${p.toFixed(4)} }` : '');
   if (!quiet) track('open_gate', it.label); $('#drawer').classList.add('open'); $('#drawer').setAttribute('aria-hidden', 'false'); document.body.classList.add('drawer-open');
 }
-document.addEventListener('pointerdown', e => { if (S.drawerId && !e.target.closest('#drawer, .cell, .pill, .fchip, #explain')) { $('#drawer').classList.remove('open'); S.drawerId = null; document.body.classList.remove('drawer-open'); } });
-$('#dx').onclick = () => { $('#drawer').classList.remove('open'); S.drawerId = null; document.body.classList.remove('drawer-open'); };
+function closeDrawer() { $('#drawer').classList.remove('open'); $('#drawer').setAttribute('aria-hidden', 'true'); S.drawerId = null; document.body.classList.remove('drawer-open'); }
+// close on outside click, but not while using controls (threshold drag keeps the drawer live)
+document.addEventListener('pointerdown', e => { if (S.drawerId && !e.target.closest('#drawer, .cell, .pill, .fchip, #explain, .controls, .tools')) closeDrawer(); });
+$('#dx').onclick = closeDrawer;
 // burst dialog focus management
 function closeBurst() { $('#burst').classList.remove('open'); $('#burst').setAttribute('aria-hidden', 'true'); $('#burstBtn').focus(); }
-addEventListener('keydown', e => { if (e.key === 'Escape') { $('#drawer').classList.remove('open'); S.drawerId = null; document.body.classList.remove('drawer-open'); if ($('#burst').classList.contains('open')) closeBurst(); } });
+addEventListener('keydown', e => { if (e.key === 'Escape') { if (S.drawerId) closeDrawer(); if ($('#burst').classList.contains('open')) closeBurst(); } });
 
 // ---------- burst: all seven sets in parallel ----------
 $('#burstBtn').onclick = async () => {
@@ -342,9 +357,9 @@ $('#burstBtn').onclick = async () => {
     const card = $(`.b-set[data-id="${s.id}"]`);
     try {
       const res = await callJev(s, text, undefined, true);   // fresh: skip both caches so the timing is honest
-      if (inp.value.trim() === text) { S.answers[s.id] = res.answers; S.lastText[s.id] = text; }
+      if (inp.value.trim() === text) { S.answers[s.id] = res.answers; S.lastText[s.id] = text; S.src[s.id] = res.recorded ? 'recorded' : 'live'; }
       pushHistory(s, text, res.answers);
-      doneN++; tok += res.usage.input_tokens; sumMs += res.ms || 0; doneAt[s.id] = res.ms;
+      doneN++; tok += res.usage?.input_tokens || 0; sumMs += res.ms || 0; doneAt[s.id] = res.ms;
       $('.t span', card).textContent = res.recorded ? 'recorded' : `${res.ms} ms`;
       $('.lane i', card).style.width = res.recorded ? '100%' : Math.min(100, res.ms / LANE * 100) + '%'; card.classList.add('done');
       $$('.b-mini i', card).forEach((i, k) => setTimeout(() => i.style.setProperty('--p', (res.answers[s.items[k].id] ?? 0).toFixed(3)), k * 2));
@@ -416,15 +431,18 @@ async function runExplain() {
   const text = inp.value.trim(), set = S.set;
   if (!text) { inp.focus(); setState('type something first'); return; }
   if (S.mode === 'replay') { setState('Explain needs live calls. Run it locally with your own key.'); toast('Explain needs a live key (run it locally)'); return; }
+  if (!S.jevOk) { toast('Jev is not available right now (no key, capped or offline)'); return; }
+  if (S.exCtrl) S.exCtrl.abort();
+  const exCtrl = S.exCtrl = new AbortController();
   const parts = splitPassages(text);
   if (parts.length < 2) { toast('Need a longer text to explain'); return; }
   const btn = $('#explainBtn'); btn.disabled = true; track('explain', String(parts.length));
   setState(`explaining: ${parts.length + 1} parallel calls (full text + each passage left out)…`, true);
   const t0 = performance.now();
   try {
-    const base = S.lastText[set.id] === text && S.answers[set.id] ? { answers: S.answers[set.id] } : await callJev(set, text, undefined, false, 'explain');
-    const without = await Promise.all(parts.map((_, i) => callJev(set, parts.filter((_, k) => k !== i).join('').trim() || '.', undefined, false, 'explain')));
-    if (inp.value.trim() !== text || S.set !== set) return;
+    const base = S.lastText[set.id] === text && S.answers[set.id] && S.src[set.id] === 'live' ? { answers: S.answers[set.id] } : await callJev(set, text, exCtrl.signal, false, 'explain');
+    const without = await Promise.all(parts.map((_, i) => callJev(set, parts.filter((_, k) => k !== i).join('').trim() || '.', exCtrl.signal, false, 'explain')));
+    if (exCtrl !== S.exCtrl || inp.value.trim() !== text || S.set !== set) return;
     // delta > 0: this passage pushes the question toward yes (removing it lowers p)
     const deltas = without.map(w => Object.fromEntries(set.items.map(it => [it.id, (base.answers[it.id] ?? 0) - (w.answers[it.id] ?? 0)])));
     const ms = Math.round(performance.now() - t0);
@@ -432,8 +450,8 @@ async function runExplain() {
     const pick = S.drawerId || [...set.items].sort((x, y) => (base.answers[y.id] ?? 0) - (base.answers[x.id] ?? 0))[0].id;
     renderExplain(pick);
     setState(`explained: ${parts.length + 1} calls in ${ms} ms`);
-  } catch (e) { setState('explain failed: ' + e.message); }
-  finally { btn.disabled = false; $('#state').classList.remove('busy'); }
+  } catch (e) { if (e.name !== 'AbortError') setState('explain failed: ' + e.message); }
+  finally { if (exCtrl === S.exCtrl) { S.exCtrl = null; btn.disabled = false; if (!S.ctrl || S.ctrl.signal.aborted) $('#state').classList.remove('busy'); } }
 }
 function renderExplain(id) {
   const X = S.explain; if (!X || X.set !== S.set) return;
@@ -457,7 +475,7 @@ $('#exText').addEventListener('click', e => {
   $('#exGates').innerHTML = `<span class="ex-k">this passage moves</span>` + top.map(it => `<button class="fchip ${d[it.id] >= 0 ? 'up' : 'down'}" data-id="${it.id}">${d[it.id] >= 0 ? '+' : '−'}${Math.abs(d[it.id]).toFixed(2)} ${esc(it.label)}</button>`).join('');
 });
 $('#exGates').addEventListener('click', e => { const c = e.target.closest('.fchip'); if (c) { renderExplain(c.dataset.id); openDrawer(c.dataset.id); } });
-function closeExplain() { S.explain = null; $('#explain').hidden = true; $('#dWhyWrap').hidden = true; }
+function closeExplain() { if (S.exCtrl) { S.exCtrl.abort(); S.exCtrl = null; $('#explainBtn').disabled = false; } S.explain = null; $('#explain').hidden = true; $('#dWhyWrap').hidden = true; }
 $('#exClose').onclick = closeExplain;
 $('#explainBtn').onclick = runExplain;
 function drawerWhy(id) {
@@ -480,12 +498,13 @@ function currentResult() {
 }
 function shareLink() {
   const r = currentResult(); if (!r) return null;
-  const t = r.text.slice(0, 1500);
-  const h = new URLSearchParams({ v: '1', set: r.set.id, a: CODEC.enc(r.set.items.map(it => r.a[it.id])), t });
+  if (r.text.length > 1500) return { tooLong: true };   // never pair a cut-down text with answers for the full text
+  const h = new URLSearchParams({ v: '1', set: r.set.id, a: CODEC.enc(r.set.items.map(it => r.a[it.id] ?? 0)), t: r.text, s: S.src[r.set.id] === 'live' ? 'l' : 'r' });
   return location.origin + location.pathname + '#' + h.toString();
 }
 $('#shareBtn').onclick = async () => {
   const url = shareLink(); if (!url) { toast('Run some text first'); return; }
+  if (url.tooLong) { toast('Share links hold up to 1,500 characters. Shorten the text, or use Save PNG / Export JSON.'); return; }
   track('share');
   try { await navigator.clipboard.writeText(url); toast('Link copied. It replays this exact result, no key needed.'); }
   catch { prompt('Copy this link:', url); }
@@ -493,25 +512,26 @@ $('#shareBtn').onclick = async () => {
 function loadShared() {
   if (!location.hash.startsWith('#v=1')) return false;
   const h = new URLSearchParams(location.hash.slice(1));
-  const set = SETS.find(s => s.id === h.get('set')), v = CODEC.dec(h.get('a') || ''), t = (h.get('t') || '').slice(0, 1500);
-  if (!set || !v || v.length !== set.items.length || !t) return false;
+  const set = SETS.find(s => s.id === h.get('set')), v = CODEC.dec(h.get('a') || ''), t = h.get('t') || '';
+  if (!set || !v || v.length !== set.items.length || !t || t.length > 1500) return false;
   selectSet(set);
   inp.value = t; autosize();
-  S.answers[set.id] = Object.fromEntries(set.items.map((it, i) => [it.id, v[i]])); S.lastText[set.id] = t;
+  S.answers[set.id] = Object.fromEntries(set.items.map((it, i) => [it.id, v[i]])); S.lastText[set.id] = t; S.src[set.id] = 'shared';
   $('#wall').classList.remove('stale'); paint(false);
   $('#sharedBar').hidden = false;
-  setState('shared result: answers as recorded by whoever made this link. Edit the text to ask Jev live.');
+  setState('shared result: answers carried in the link, not re-checked. Edit the text to ask Jev live.');
   return true;
 }
 $('#sharedX').onclick = () => { $('#sharedBar').hidden = true; history.replaceState(null, '', location.pathname + location.search); };
 
 // ---------- fingerprint: the whole result as one shareable image ----------
+if (!CanvasRenderingContext2D.prototype.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
 function heatColor(p, hue) {   // matches the CSS ramp (oklch) closely enough in HSL for a canvas
   const q = p * p * (0.35 + 0.65 * p);
   return `hsla(${hue + q * 40}, ${30 + q * 65}%, ${12 + q * 55}%, ${0.45 + p * 0.55})`;
 }
 function wrapText(g, text, x, y, maxW, lh, maxLines) {
-  const words = text.replace(/\s+/g, ' ').split(' '); let line = '', n = 0;
+  const words = text.replace(/\s+/g, ' ').split(' ').flatMap(w => w.length > 40 ? w.match(/.{1,40}/g) : [w]); let line = '', n = 0;
   for (let i = 0; i < words.length; i++) {
     const test = line ? line + ' ' + words[i] : words[i];
     if (g.measureText(test).width > maxW && line) {
@@ -523,7 +543,7 @@ function wrapText(g, text, x, y, maxW, lh, maxLines) {
 }
 function drawFingerprint() {
   const r = currentResult(); if (!r) return null;
-  const { set, a, text } = r, W = 1200, H = 630, c = document.createElement('canvas');
+  const { set, a, text } = r, src = S.src[set.id] || 'live', W = 1200, H = 630, c = document.createElement('canvas');
   c.width = W * 2; c.height = H * 2; const g = c.getContext('2d'); g.scale(2, 2);
   const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#07080e'); bg.addColorStop(1, `hsl(${set.hue}, 45%, 9%)`);
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
@@ -554,7 +574,7 @@ function drawFingerprint() {
   }
   const lit = set.items.filter(it => (a[it.id] ?? 0) >= S.thr).length;
   g.fillStyle = '#6b728a'; g.font = '500 12px "JetBrains Mono", monospace';
-  g.fillText(`${lit} of 200 above ${S.thr.toFixed(2)} · github.com/charles-forsyth/jev-decision-wall`, 222, H - 28);
+  g.fillText(`${lit} of 200 above ${S.thr.toFixed(2)} · ${SRC_LABEL[src]} · independent demo, not affiliated with TypeSafe · github.com/charles-forsyth/jev-decision-wall`, 60, H - 28);
   return c;
 }
 $('#pngBtn').onclick = () => {
@@ -568,7 +588,7 @@ $('#pngBtn').onclick = () => {
 $('#jsonBtn').onclick = () => {
   const r = currentResult(); if (!r) { toast('Run some text first'); return; }
   track('export');
-  const out = { tool: 'jev-decision-wall', set: r.set.id, text: r.text, threshold: S.thr, model: REPLAYS && S.mode === 'replay' ? REPLAYS.model : undefined,
+  const out = { tool: 'jev-decision-wall', source: S.src[r.set.id] || 'live', set: r.set.id, text: r.text, threshold: S.thr, model: S.src[r.set.id] === 'recorded' && REPLAYS ? REPLAYS.model : undefined,
     answers: r.set.items.map(it => ({ id: it.id, category: it.cat, label: it.label, question: it.question, p: +(r.a[it.id] ?? 0).toFixed(4) })) };
   const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
   const link = document.createElement('a'); link.download = `decision-wall-${r.set.id}.json`; link.href = URL.createObjectURL(blob); link.click();

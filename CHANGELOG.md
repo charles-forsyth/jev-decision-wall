@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.2.2 - 2026-11-01
+Fixes from a fourth review panel (10 reviewers on v1.2.1). Each server bug was reproduced first and has a regression test (21 tests).
+
+Server
+- A client that disconnected mid-upload could crash the server (reproduced). Fixed, plus a last-resort guard so no handler error can kill the process.
+- In-flight token reservations are released exactly once and sized to the request, never leaking or going negative; spent maps of past days are pruned.
+- A 200 response without answers is treated as an error and never cached.
+- Total question text per call is capped.
+- Setting ALLOWED_DOMAIN without AUTH_HEADER now refuses to start instead of silently allowing everyone.
+
+App
+- Recorded mode only switches on when there is no server at all (static host). A live server having a bad moment shows "offline" instead of quietly swapping in recorded answers.
+- Every result knows where it came from: live, recorded, or shared link. Shared links are labelled "not re-checked", and PNG and JSON exports carry the source.
+- Share links refuse texts over 1,500 characters instead of cutting the text and pairing it with answers for the full text.
+- Explain can be cancelled: editing, switching sets or re-clicking aborts its calls; it never shows deltas for another set; it needs a live key.
+- Clearing the box or switching sets mid-request no longer leaves spinners stuck; switching sets closes the drawer, Explain and flip strip.
+- Threshold dragging no longer closes the question drawer; the drawer resets aria-hidden on close.
+- Canvas fallback for roundRect; very long words wrap on the fingerprint.
+
+Docs
+- README says plainly that share links contain your text, describes the usage events the page sends, and gives the real Explain call count.
+
 ## 1.2.1 - 2026-11-01
 Clearer about what this is: an independent experiment in a way of using models like Jev, not a TypeSafe product.
 - App header now reads "Independent demo · built on TypeSafe Jev" (was "TypeSafe · Jev · System One"); not-affiliated line added to the app footer.
