@@ -14,7 +14,7 @@ jobs:
         with: { node-version: "${{ matrix.node }}" }
       - run: npm run check
       - name: Syntax check front end
-        run: node --check public/app.js && for f in public/sets/*.js; do node --check "$f"; done
+        run: for f in public/*.js public/sets/*.js; do node --check "$f"; done
       - name: Smoke test (no key -> helpful 500, page serves)
         run: |
           node server.js & sleep 1

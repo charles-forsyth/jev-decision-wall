@@ -31,10 +31,10 @@
     <p class="kicker">Open source · TypeSafe Jev · System One</p>
     <h1>200 questions.<br><em>One call.</em> About a quarter second.</h1>
     <p class="lede">Type anything. Two hundred yes/no judgments light up as a live heatmap, all answered in a single parallel call to Jev. It's a hands-on way to <i>feel</i> what a System One model does.</p>
-    <div class="cta"><a class="btn" href="#start">Run it locally</a><a class="btn ghost" href="https://github.com/charles-forsyth/jev-decision-wall">Star on GitHub</a></div>
+    <div class="cta"><a class="btn" href="app/">Try it now, no key</a><a class="btn ghost" href="#start">Run it locally</a><a class="btn ghost" href="https://github.com/charles-forsyth/jev-decision-wall">Star on GitHub</a></div>
     <dl class="stats">
       <div><dt>questions per call</dt><dd data-count="200">200</dd></div>
-      <div><dt>typical latency</dt><dd>~200<small>ms</small></dd></div>
+      <div><dt>typical latency</dt><dd>~250<small>ms</small></dd></div>
       <div><dt>7 sets in parallel</dt><dd>1,400<small>answers</small></dd></div>
       <div><dt>dependencies</dt><dd>0</dd></div>
     </dl>
@@ -45,9 +45,15 @@
     <p class="cap">70-second demo, recorded live against the real API. Every number on screen is a real Jev answer.</p>
   </section>
 
+  <section class="grid3">
+    <article><h3>Explain: which words matter</h3><p>Leave each sentence out, re-ask all 200 questions, every version in parallel. The text lights up for the question you pick. <i>"I am furious about the delay"</i> drives Frustrated +0.89; the scheduling lines add nothing. Five calls, about 300 ms.</p></article>
+    <article><h3>A race, not a report</h3><p>Fire all seven sets and watch seven lanes race. Measured: 1,400 answers in 282 ms, against 1,092 ms if the same calls ran one after another.</p></article>
+    <article><h3>Share the exact result</h3><p>A share link carries all 200 answers in the URL, one byte each, so it replays with no key and no server. Or save the whole wall as a fingerprint PNG.</p></article>
+  </section>
+
   <section id="how" class="grid3">
     <article><h3>Ask wide, not deep</h3><p>Jev answers questions rather than writing text. Asking 200 questions about one text costs nearly the same as asking one: about 185 ms for 1, about 200 ms for 50, about 150–300 ms for 200.</p></article>
-    <article><h3>Probabilities in, decisions in code</h3><p>Every cell is a calibrated probability. Slide the threshold and the wall changes instantly with no new call. The model gives the evidence once; your code decides what counts.</p></article>
+    <article><h3>Probabilities in, decisions in code</h3><p>Every cell is a probability (TypeSafe trains Jev to be calibrated). Slide the threshold and the wall changes instantly with no new call. The model gives the evidence once; your code decides what counts.</p></article>
     <article><h3>Your key stays home</h3><p>A tiny Node server holds your key and proxies the calls, with a cache, a daily token cap and a usage log. The browser never sees the key.</p></article>
   </section>
 
@@ -55,7 +61,9 @@
     <figure><a href="media/01-hero-scam.jpg"><img src="media/01-hero-scam.jpg" alt="Scam Shield reading a grandparent scam" loading="lazy"></a><figcaption><b>Scam Shield</b> · grandparent scam .98, gift cards .98, urgency .98</figcaption></figure>
     <figure><a href="media/02-wall-scam.jpg"><img src="media/02-wall-scam.jpg" alt="Full heatmap of 200 questions" loading="lazy"></a><figcaption><b>The wall</b> · 8 categories × 25 questions</figcaption></figure>
     <figure><a href="media/04-drawer.jpg"><img src="media/04-drawer.jpg" alt="Question detail drawer" loading="lazy"></a><figcaption><b>Click any cell</b> · question, score, rank, history</figcaption></figure>
-    <figure><a href="media/05-burst.jpg"><img src="media/05-burst.jpg" alt="Seven sets fired in parallel" loading="lazy"></a><figcaption><b>Parallel burst</b> · 1,400 answers in 283 ms</figcaption></figure>
+    <figure><a href="media/05-burst.jpg"><img src="media/05-burst.jpg" alt="Seven sets racing in parallel" loading="lazy"></a><figcaption><b>Parallel burst</b> · all at once vs one after another</figcaption></figure>
+    <figure><a href="media/06-explain.jpg"><img src="media/06-explain.jpg" alt="Explain view highlighting the sentence that drives Frustrated" loading="lazy"></a><figcaption><b>Explain</b> · which sentence drives each answer</figcaption></figure>
+    <figure><a href="media/07-fingerprint.jpg"><img src="media/07-fingerprint.jpg" alt="Fingerprint PNG of all 200 answers" loading="lazy"></a><figcaption><b>Fingerprint PNG</b> · the whole wall as one card</figcaption></figure>
   </section>
 
   <section id="sets" class="sets">

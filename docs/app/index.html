@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decision Wall · 200 questions, one call · Jev</title>
+<meta name="description" content="Type anything. 200 yes/no judgments light up in about 200 ms, all from one parallel call to TypeSafe Jev.">
+<meta property="og:title" content="Jev Decision Wall">
+<meta property="og:description" content="200 questions, one call, ~250 ms. A live heatmap of parallel AI judgments, with an Explain view that shows which words drive each answer.">
+<meta name="theme-color" content="#05060a">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="gridfx" aria-hidden="true"></div>
+<canvas id="beams" aria-hidden="true"></canvas>
+
+<header class="top">
+  <div class="brand">
+    <div class="mark" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    <div>
+      <div class="kicker">TypeSafe · Jev · System One</div>
+      <h1>Decision <em>Wall</em></h1>
+    </div>
+  </div>
+  <div class="hud">
+    <div class="hud-cell"><span class="k">questions / call</span><span class="v" id="hGates">200</span></div>
+    <div class="hud-cell"><span class="k">calls made</span><span class="v" id="hCalls">0</span></div>
+    <div class="hud-cell"><span class="k">latency</span><span class="v" id="hMs">—</span></div>
+    <div class="hud-cell"><span class="k">time ÷ 200</span><span class="v" id="hPer">—</span></div>
+    <div class="hud-cell spark"><span class="k">last 40 calls</span><svg id="spark" viewBox="0 0 120 26" preserveAspectRatio="none"></svg></div>
+    <div class="hud-cell"><span class="k" id="hJevK">jev</span><span class="v" id="hJev"><i class="dot"></i>…</span></div>
+  </div>
+</header>
+
+<main>
+  <div class="setup" id="setup" hidden>
+    <b>No API key found.</b> Get one at <a href="https://typesafe.ai" target="_blank" rel="noopener">typesafe.ai</a>, then
+    <code>cp .env.example .env</code>, paste your key after <code>TYPESAFE_API_KEY=</code>, and restart <code>node server.js</code>.
+  </div>
+  <div class="banner" id="replayBar" hidden><b>Recorded mode.</b> <span id="replayWhy"></span> Pick any sample, switch sets, fire all 7. To type your own text, <a href="https://github.com/charles-forsyth/jev-decision-wall#quick-start">run it locally</a> with a TypeSafe key (about 2 minutes).</div>
+  <div class="banner shared" id="sharedBar" hidden><b>Shared result.</b> These are the answers Jev gave when the link was made. Edit the text to ask again live (needs a key). <button id="sharedX" aria-label="dismiss">×</button></div>
+  <section class="composer">
+    <div class="field" id="field">
+      <textarea id="input" rows="1" spellcheck="false" autocomplete="off" aria-label="Text to analyze" placeholder="Type or paste anything… 200 questions are answered every time you pause"></textarea>
+      <div class="field-foot">
+        <div class="samples" id="samples"></div>
+        <div class="field-meta"><span id="chars">0 chars</span><span class="sep">·</span><span id="state" role="status" aria-live="polite">idle</span></div>
+      </div>
+      <div class="scan" id="scan"></div>
+    </div>
+    <nav class="tabs" id="tabs" role="tablist"></nav>
+    <p class="blurb" id="blurb"></p>
+  </section>
+
+  <section class="readout" id="readout"><span class="ghost">The strongest signals will line up here.</span></section>
+  <section class="flips" id="flips" aria-live="polite"></section>
+
+  <section class="explain" id="explain" hidden>
+    <div class="ex-head"><div><span class="kicker">explain</span> <span id="exFocus"></span></div><span class="ex-meta" id="exMeta"></span><button class="x small" id="exClose" aria-label="close explain">×</button></div>
+    <p class="ex-text" id="exText"></p>
+    <div class="ex-gates" id="exGates"></div>
+    <p class="ex-note">Each passage was left out in turn and all 200 questions re-asked, every version in parallel. Green passages push this question toward yes; red push toward no. Leave-one-out is a rough guide, not a proof.</p>
+  </section>
+
+  <section class="controls">
+    <label class="thresh">threshold <input type="range" id="thr" min="0.05" max="0.95" step="0.05" value="0.5"><b id="thrV">0.50</b></label>
+    <span class="litcount"><b id="lit">0</b> of 200 lit</span>
+    <div class="seg" id="sortSeg"><button data-s="cat" class="on">Category order</button><button data-s="heat">Sort by heat</button></div>
+    <div class="seg" id="viewSeg"><button data-v="heat" class="on">Heatmap</button><button data-v="lit">Lit only</button></div>
+    <button class="burst" id="burstBtn" title="Run every question set at once: 7 parallel calls, 1,400 questions">Fire all 7 sets · 1,400 questions</button>
+  </section>
+  <section class="tools" aria-label="result tools">
+    <button id="explainBtn" title="Leave each passage out in turn and re-ask all 200 questions in parallel, to see which words drive which answers">Explain: which words matter</button>
+    <button id="shareBtn" title="Copy a link that replays this exact result. Works without a key.">Copy share link</button>
+    <button id="pngBtn" title="Download this result as a 1200×630 image">Save fingerprint PNG</button>
+    <button id="jsonBtn" title="Download all 200 questions and probabilities as JSON">Export JSON</button>
+  </section>
+
+  <section class="wall" id="wall" aria-label="200 questions, brightness = probability of yes"></section>
+
+  <footer class="foot">
+    <span class="notice" id="notice">Text you type is sent to the TypeSafe API using the key configured on this server. Use made-up or public text.</span>
+    <span>Every cell is a separate yes/no question (a Jev <em>noul</em>) asked about your text. All 200 go out in one request and come back together, each a calibrated probability.</span>
+    <span id="usage"></span>
+  </footer>
+</main>
+
+<aside class="drawer" id="drawer" aria-hidden="true" role="dialog" aria-label="Question detail">
+  <button class="x" id="dx" aria-label="close">×</button>
+  <div class="d-cat" id="dCat"></div>
+  <h2 id="dLab"></h2>
+  <p class="d-q" id="dQ"></p>
+  <div class="d-ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" class="trk"/><circle cx="60" cy="60" r="52" class="arc" id="dArc"/></svg><div class="d-p" id="dP">—</div></div>
+  <div class="d-row"><span>rank in set</span><b id="dRank">—</b></div>
+  <div class="d-row"><span>rank in category</span><b id="dRankC">—</b></div>
+  <div class="d-row"><span>verdict at threshold</span><b id="dVer">—</b></div>
+  <div id="dWhyWrap" hidden><div class="d-h">what drives it (explain)</div><div class="d-hist" id="dWhy"></div></div>
+  <div class="d-h">history (your recent inputs)</div>
+  <div class="d-hist" id="dHist"></div>
+  <div class="d-h">what Jev received for this gate</div>
+  <pre class="d-json" id="dJson"></pre>
+</aside>
+
+<div class="modal" id="burst" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Parallel burst results">
+  <div class="modal-in">
+    <button class="x" id="bx" aria-label="close">×</button>
+    <div class="b-head"><div><div class="kicker">parallel burst</div><h2>Seven question sets, all at once</h2></div><div class="b-stat" id="bStat"></div></div>
+    <div class="b-grid" id="bGrid"></div>
+    <div class="b-compare" id="bCompare"></div>
+    <p class="b-note">Seven requests leave together, 200 questions each. The wall-clock time is about the same as a single call. (An exact repeat of a recent input can come back in a few ms from TypeSafe's own cache.) Click a set to open it.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="codec.js"></script>
+<script src="sets/01-signal.js"></script>
+<script src="sets/02-scam.js"></script>
+<script src="sets/03-homestead.js"></script>
+<script src="sets/04-rc.js"></script>
+<script src="sets/05-ops.js"></script>
+<script src="sets/06-news.js"></script>
+<script src="sets/07-story.js"></script>
+<script src="replays.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

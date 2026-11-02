@@ -11,7 +11,7 @@ Type anything. Two hundred yes/no judgments light up as a live heatmap, all answ
 ![Dependencies](https://img.shields.io/badge/dependencies-0-6fd3ff)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**[▶ Watch the 70-second demo](https://charles-forsyth.github.io/jev-decision-wall/)** · [Quick start](#quick-start) · [How it works](#how-it-works) · [Question sets](#seven-question-sets)
+**[▶ Try it now, no key needed](https://charles-forsyth.github.io/jev-decision-wall/app/)** · [Watch the 70-second demo](https://charles-forsyth.github.io/jev-decision-wall/#demo) · [Quick start](#quick-start) · [How it works](#how-it-works) · [Question sets](#seven-question-sets)
 
 <img src="docs/media/live-typing.gif" alt="Typing into Decision Wall: safety questions light up as the sentence grows" width="800">
 
@@ -39,7 +39,11 @@ Decision Wall makes that visible. Every cell on the wall is a separate question.
 - **Paste anything.** An email, a scam text, a log line, a news post, a story pitch.
 - **Click any cell** to see the exact question, its probability, its rank, and how it changed across your recent inputs.
 - **Slide the threshold.** The wall re-sorts instantly with **no new call**: the model gives probabilities once, your code decides what counts.
-- **Fire all 7 sets.** 1,400 questions across seven parallel calls. Measured: **1,400 answers in 283 ms** wall clock.
+- **Fire all 7 sets.** 1,400 questions across seven parallel calls, drawn as a live race, with the measured wall clock next to what the same calls would take one after another. Measured: **1,400 answers in 282 ms, against 1,092 ms back to back.**
+- **Explain: which words matter.** Leaves each sentence out in turn and re-asks all 200 questions, every version in parallel. The text lights up green or red for whichever question you pick: *"I am furious about the delay"* drives **Frustrated +0.89** while the scheduling sentences contribute nothing. Five calls, ~300 ms.
+- **See what flipped.** After every edit, a strip shows which questions just crossed the threshold and which went dark.
+- **Share the exact result.** *Copy share link* encodes all 200 answers in the URL (one byte each), so the link replays the result with no key and no server. *Save fingerprint PNG* draws the whole wall as a 1200×630 card; *Export JSON* gives you every question and probability.
+- **Try it without a key.** The [hosted copy](https://charles-forsyth.github.io/jev-decision-wall/app/) plays real Jev answers recorded for every sample against every set (`npm run record` regenerates them).
 
 <table>
 <tr>
@@ -48,7 +52,11 @@ Decision Wall makes that visible. Every cell on the wall is a separate question.
 </tr>
 <tr>
 <td><img src="docs/media/04-drawer.jpg" alt="Clicking a cell opens its question, score ring and history"><br><sub><b>Click a cell:</b> the exact question, score, rank and history</sub></td>
-<td><img src="docs/media/05-burst.jpg" alt="Seven question sets fired in parallel"><br><sub><b>Parallel burst:</b> 7 sets, 1,400 answers, one blink</sub></td>
+<td><img src="docs/media/05-burst.jpg" alt="Seven question sets racing in parallel, with measured vs back-to-back timing bars"><br><sub><b>Parallel burst:</b> 7 lanes race; all at once vs one after another</sub></td>
+</tr>
+<tr>
+<td><img src="docs/media/06-explain.jpg" alt="Explain view: the sentence 'I am furious about the delay' highlighted green with +0.89 for Frustrated"><br><sub><b>Explain:</b> which sentence drives <i>Frustrated</i> (+0.89), leave-one-out in parallel</sub></td>
+<td><img src="docs/media/07-fingerprint.jpg" alt="A 1200x630 fingerprint image of all 200 answers"><br><sub><b>Fingerprint PNG:</b> the whole result as one shareable card</sub></td>
 </tr>
 </table>
 
@@ -141,6 +149,7 @@ It scales to zero, so it costs nothing when nobody is using it. Caps there are b
 - **Probabilities, not facts.** TypeSafe trains Jev for calibrated probabilities (we haven't measured that here), but it's a fast judgment, not research. Treat differences under ~0.1 as noise, and don't set thresholds finer than that.
 - **Soft concepts under-fire** when the text only implies them. Name the concrete thing in the question ("Does it ask for gift cards?") instead of the vague one ("Is it shady?").
 - **Your text goes to TypeSafe.** Read their [privacy policy](https://typesafe.ai/legal/privacy-policy) before pasting anything private.
+- **Explain is leave-one-out**, a rough guide: when two sentences say the same thing, removing either one changes little, so both can look unimportant.
 - Latency figures were measured on `jev-1.14` from a US home connection; yours will vary.
 
 ## Development
@@ -148,6 +157,8 @@ It scales to zero, so it costs nothing when nobody is using it. Caps there are b
 ```bash
 npm run check     # validate all question sets + run tests (no key or network needed)
 npm start         # same as node server.js
+npm run record    # re-record public/replays.js against the live API (~$0.04)
+npm run pages     # copy public/ into docs/app/ for the no-key GitHub Pages copy
 ```
 
 The tests run the server against a fake TypeSafe endpoint and check that the key never leaks, caching, caps, request limits and the sign-in gate.
