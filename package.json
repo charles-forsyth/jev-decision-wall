@@ -1,7 +1,7 @@
 {
   "name": "jev-decision-wall",
-  "version": "1.2.0",
-  "description": "Type anything. 200 yes/no judgments light up in ~250 ms from one parallel call to TypeSafe Jev, with an Explain view that shows which words drive each answer.",
+  "version": "1.2.1",
+  "description": "An independent demo of one way to use models like TypeSafe Jev: ask 200 small yes/no questions at once (one parallel call, ~250 ms) and let code decide. Not affiliated with TypeSafe.",
   "main": "server.js",
   "bin": {
     "jev-decision-wall": "server.js"
