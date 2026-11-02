@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.3 - 2026-11-02
+- Added CITATION.cff so GitHub shows "Cite this repository" and Zenodo archives each release with a DOI.
+
 ## 1.2.2 - 2026-11-01
 Fixes from a fourth review panel (10 reviewers on v1.2.1). Each server bug was reproduced first and has a regression test (21 tests).
 
