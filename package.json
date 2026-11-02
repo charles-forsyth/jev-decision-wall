@@ -1,6 +1,6 @@
 {
   "name": "jev-decision-wall",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "An independent demo of one way to use models like TypeSafe Jev: ask 200 small yes/no questions at once (one parallel call, ~250 ms) and let code decide. Not affiliated with TypeSafe.",
   "main": "server.js",
   "bin": {

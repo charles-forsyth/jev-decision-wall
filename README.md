@@ -44,9 +44,9 @@ Decision Wall makes that visible. Every cell on the wall is a separate question.
 - **Click any cell** to see the exact question, its probability, its rank, and how it changed across your recent inputs.
 - **Slide the threshold.** The wall re-sorts instantly with **no new call**: the model gives probabilities once, your code decides what counts.
 - **Fire all 7 sets.** 1,400 questions across seven parallel calls, drawn as a live race, with the measured wall clock next to what the same calls would take one after another. Measured: **1,400 answers in 282 ms, against 1,092 ms back to back.**
-- **Explain: which words matter.** Leaves each sentence out in turn and re-asks all 200 questions, every version in parallel. The text lights up green or red for whichever question you pick: *"I am furious about the delay"* drives **Frustrated +0.89** while the scheduling sentences contribute nothing. Five calls, ~300 ms.
+- **Explain: which words matter.** Leaves each sentence out in turn and re-asks all 200 questions, every version in parallel. The text lights up green or red for whichever question you pick: *"I am furious about the delay"* drives **Frustrated +0.89** while the scheduling sentences contribute nothing. One call per sentence plus one for the full text (5 for that email, at most 13), all in parallel: ~300 ms.
 - **See what flipped.** After every edit, a strip shows which questions just crossed the threshold and which went dark.
-- **Share the exact result.** *Copy share link* encodes all 200 answers in the URL (one byte each), so the link replays the result with no key and no server. *Save fingerprint PNG* draws the whole wall as a 1200×630 card; *Export JSON* gives you every question and probability.
+- **Share the exact result.** *Copy share link* encodes all 200 answers in the URL (one byte each), so the link replays the result with no key and no server. **The link contains your text** (up to 1,500 characters), so anyone you send it to, and any chat app that previews it, can read it. Answers in a shared link are shown as "from a shared link (not re-checked)": a link can be edited, so it isn't proof of what Jev said. *Save fingerprint PNG* draws the whole wall as a 1200×630 card; *Export JSON* gives you every question and probability.
 - **Try it without a key.** The [hosted copy](https://charles-forsyth.github.io/jev-decision-wall/app/) plays real Jev answers recorded for every sample against every set (`npm run record` regenerates them).
 
 <table>
@@ -153,6 +153,8 @@ It scales to zero, so it costs nothing when nobody is using it. Caps there are b
 - **Probabilities, not facts.** TypeSafe trains Jev for calibrated probabilities (we haven't measured that here), but it's a fast judgment, not research. Treat differences under ~0.1 as noise, and don't set thresholds finer than that.
 - **Soft concepts under-fire** when the text only implies them. Name the concrete thing in the question ("Does it ask for gift cards?") instead of the vague one ("Is it shady?").
 - **Your text goes to TypeSafe.** Read their [privacy policy](https://typesafe.ai/legal/privacy-policy) before pasting anything private.
+- **Share links carry your text.** Don't share a link for anything you wouldn't paste in a chat.
+- **Usage events.** The page tells its own server when you open a set, pick a sample, fire a burst or open a question (no text). In local mode those are dropped; in sign-in mode they go to the audit log.
 - **Explain is leave-one-out**, a rough guide: when two sentences say the same thing, removing either one changes little, so both can look unimportant.
 - Latency figures were measured on `jev-1.14` from a US home connection; yours will vary.
 

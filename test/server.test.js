@@ -171,7 +171,7 @@ test('parallel calls reserve budget so a burst cannot run past the cap', async (
   try {
     const rs = await Promise.all([1, 2, 3, 4, 5, 6, 7].map(i => ask(srv, 'p' + i)));
     const ok = rs.filter(r => r.status === 200).length;
-    assert.ok(ok <= 2, `expected at most 2 calls admitted against a 7000-token cap, got ${ok}`);
+    assert.ok(ok >= 1 && ok <= 2, `expected 1-2 calls admitted against a 7000-token cap, got ${ok}`);
   } finally { srv.close(); slow.close(); delete process.env.JEV_DAILY_TOKEN_CAP; }
 });
 
@@ -181,4 +181,38 @@ test('security headers include a content security policy', async () => {
     const r = await req(srv, '/');
     assert.match(r.headers.get('content-security-policy') || '', /frame-ancestors 'none'/);
   } finally { srv.close(); }
+});
+
+
+// ---------- v1.2.2 regression tests (2026-11-01 v1.2.1 panel) ----------
+test('a client that aborts mid-upload does not crash the server', async () => {
+  const net = require('net');
+  const srv = await start({ TYPESAFE_API_KEY: 'test-key', JEV_USAGE_FILE: path.join(tmp, 'u20.jsonl') });
+  try {
+    await new Promise(r => { const s = net.connect(srv.address().port, '127.0.0.1', () => {
+      s.write('POST /api/jev HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\nContent-Length: 100000\r\n\r\n{"state":');
+      setTimeout(() => { s.destroy(); r(); }, 50); }); });
+    await new Promise(r => setTimeout(r, 200));
+    assert.strictEqual((await req(srv, '/healthz')).status, 200);
+  } finally { srv.close(); }
+});
+
+test('reservations are released after failures, so later calls still go through', async () => {
+  const up = http.createServer((rq, rs) => { rq.resume(); rs.writeHead(500, { 'Content-Type': 'application/json' }); rs.end('{"error":"boom"}'); });
+  await new Promise(r => up.listen(0, '127.0.0.1', r));
+  const srv = await start({ TYPESAFE_API_KEY: 'test-key', TYPESAFE_API_URL: `http://127.0.0.1:${up.address().port}`, JEV_USAGE_FILE: path.join(tmp, 'u21.jsonl'), JEV_DAILY_TOKEN_CAP: '7000' });
+  try {
+    for (let i = 0; i < 5; i++) assert.strictEqual((await ask(srv, 'f' + i)).status, 500);   // never 429: nothing stays reserved
+  } finally { srv.close(); up.close(); delete process.env.JEV_DAILY_TOKEN_CAP; }
+});
+
+test('a 200 response without answers is an error and is not cached', async () => {
+  let n = 0;
+  const up = http.createServer((rq, rs) => { rq.resume(); n++; rs.writeHead(200, { 'Content-Type': 'application/json' }); rs.end('{"usage":{"input_tokens":1}}'); });
+  await new Promise(r => up.listen(0, '127.0.0.1', r));
+  const srv = await start({ TYPESAFE_API_KEY: 'test-key', TYPESAFE_API_URL: `http://127.0.0.1:${up.address().port}`, JEV_USAGE_FILE: path.join(tmp, 'u22.jsonl') });
+  try {
+    assert.notStrictEqual((await ask(srv, 'same')).status, 200);
+    await ask(srv, 'same'); assert.strictEqual(n, 2);
+  } finally { srv.close(); up.close(); }
 });

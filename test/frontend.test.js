@@ -46,3 +46,20 @@ test('docs/app matches public/ (run npm run pages after editing public/)', () =>
   assert.deepStrictEqual(b, a);
   for (const f of a) assert.ok(fs.readFileSync(path.join(ROOT, 'public', f)).equals(fs.readFileSync(path.join(ROOT, 'docs', 'app', f))), `docs/app/${f} is stale`);
 });
+
+test('codec rejects truncated or tampered payloads by length', () => {
+  const s = enc(Array(200).fill(0.5));
+  assert.strictEqual(dec(s).length, 200);
+  assert.notStrictEqual(dec(s.slice(0, -4)).length, 200);   // app requires exactly 200
+  assert.strictEqual(dec('a b'), null);
+  assert.strictEqual(dec(null), null);
+});
+
+test('replay answers are probabilities and differ between samples', () => {
+  const R = window.JEV_REPLAYS;
+  const seen = new Set();
+  for (const t of R.texts) for (const v of Object.values(t.a)) {
+    const d = dec(v); assert.ok(d.every(p => p >= 0 && p <= 1)); seen.add(v);
+  }
+  assert.ok(seen.size > R.texts.length * 5, 'replays look duplicated');
+});
