@@ -6,7 +6,7 @@
 <title>Decision Wall · 200 questions, one call · Jev</title>
 <meta name="description" content="Type anything. 200 yes/no judgments light up in about 200 ms, all from one parallel call to TypeSafe Jev.">
 <meta property="og:title" content="Jev Decision Wall">
-<meta property="og:description" content="200 questions, one call, ~200 ms. A live heatmap of parallel AI judgments.">
+<meta property="og:description" content="200 questions, one call, ~250 ms. A live heatmap of parallel AI judgments, with an Explain view that shows which words drive each answer.">
 <meta name="theme-color" content="#05060a">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -42,6 +42,8 @@
     <b>No API key found.</b> Get one at <a href="https://typesafe.ai" target="_blank" rel="noopener">typesafe.ai</a>, then
     <code>cp .env.example .env</code>, paste your key after <code>TYPESAFE_API_KEY=</code>, and restart <code>node server.js</code>.
   </div>
+  <div class="banner" id="replayBar" hidden><b>Recorded mode.</b> <span id="replayWhy"></span> Pick any sample, switch sets, fire all 7. To type your own text, <a href="https://github.com/charles-forsyth/jev-decision-wall#quick-start">run it locally</a> with a TypeSafe key (about 2 minutes).</div>
+  <div class="banner shared" id="sharedBar" hidden><b>Shared result.</b> These are the answers Jev gave when the link was made. Edit the text to ask again live (needs a key). <button id="sharedX" aria-label="dismiss">×</button></div>
   <section class="composer">
     <div class="field" id="field">
       <textarea id="input" rows="1" spellcheck="false" autocomplete="off" aria-label="Text to analyze" placeholder="Type or paste anything… 200 questions are answered every time you pause"></textarea>
@@ -56,6 +58,14 @@
   </section>
 
   <section class="readout" id="readout"><span class="ghost">The strongest signals will line up here.</span></section>
+  <section class="flips" id="flips" aria-live="polite"></section>
+
+  <section class="explain" id="explain" hidden>
+    <div class="ex-head"><div><span class="kicker">explain</span> <span id="exFocus"></span></div><span class="ex-meta" id="exMeta"></span><button class="x small" id="exClose" aria-label="close explain">×</button></div>
+    <p class="ex-text" id="exText"></p>
+    <div class="ex-gates" id="exGates"></div>
+    <p class="ex-note">Each passage was left out in turn and all 200 questions re-asked, every version in parallel. Green passages push this question toward yes; red push toward no. Leave-one-out is a rough guide, not a proof.</p>
+  </section>
 
   <section class="controls">
     <label class="thresh">threshold <input type="range" id="thr" min="0.05" max="0.95" step="0.05" value="0.5"><b id="thrV">0.50</b></label>
@@ -63,6 +73,12 @@
     <div class="seg" id="sortSeg"><button data-s="cat" class="on">Category order</button><button data-s="heat">Sort by heat</button></div>
     <div class="seg" id="viewSeg"><button data-v="heat" class="on">Heatmap</button><button data-v="lit">Lit only</button></div>
     <button class="burst" id="burstBtn" title="Run every question set at once: 7 parallel calls, 1,400 questions">Fire all 7 sets · 1,400 questions</button>
+  </section>
+  <section class="tools" aria-label="result tools">
+    <button id="explainBtn" title="Leave each passage out in turn and re-ask all 200 questions in parallel, to see which words drive which answers">Explain: which words matter</button>
+    <button id="shareBtn" title="Copy a link that replays this exact result. Works without a key.">Copy share link</button>
+    <button id="pngBtn" title="Download this result as a 1200×630 image">Save fingerprint PNG</button>
+    <button id="jsonBtn" title="Download all 200 questions and probabilities as JSON">Export JSON</button>
   </section>
 
   <section class="wall" id="wall" aria-label="200 questions, brightness = probability of yes"></section>
@@ -83,6 +99,7 @@
   <div class="d-row"><span>rank in set</span><b id="dRank">—</b></div>
   <div class="d-row"><span>rank in category</span><b id="dRankC">—</b></div>
   <div class="d-row"><span>verdict at threshold</span><b id="dVer">—</b></div>
+  <div id="dWhyWrap" hidden><div class="d-h">what drives it (explain)</div><div class="d-hist" id="dWhy"></div></div>
   <div class="d-h">history (your recent inputs)</div>
   <div class="d-hist" id="dHist"></div>
   <div class="d-h">what Jev received for this gate</div>
@@ -94,10 +111,14 @@
     <button class="x" id="bx" aria-label="close">×</button>
     <div class="b-head"><div><div class="kicker">parallel burst</div><h2>Seven question sets, all at once</h2></div><div class="b-stat" id="bStat"></div></div>
     <div class="b-grid" id="bGrid"></div>
+    <div class="b-compare" id="bCompare"></div>
     <p class="b-note">Seven requests leave together, 200 questions each. The wall-clock time is about the same as a single call. (An exact repeat of a recent input can come back in a few ms from TypeSafe's own cache.) Click a set to open it.</p>
   </div>
 </div>
 
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="codec.js"></script>
 <script src="sets/01-signal.js"></script>
 <script src="sets/02-scam.js"></script>
 <script src="sets/03-homestead.js"></script>
@@ -105,6 +126,7 @@
 <script src="sets/05-ops.js"></script>
 <script src="sets/06-news.js"></script>
 <script src="sets/07-story.js"></script>
+<script src="replays.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

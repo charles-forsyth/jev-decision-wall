@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0 - 2026-11-01
+The features no other Jev demo has (from the uniqueness review panel).
+- **Explain: which words matter.** Leaves each sentence out in turn and re-asks all 200 questions, every version in parallel. The text lights up green or red for the question you pick, and the question drawer lists what drives it.
+- **Flip strip.** After every edit: which questions just crossed the threshold, and which went dark.
+- **Burst as a race.** Seven live lanes, then the measured wall clock beside the back-to-back sum of the same calls.
+- **Share link.** All 200 answers ride in the URL (one byte each, 267 characters), so the link replays the exact result with no key or server.
+- **Fingerprint PNG** (1200×630) and **Export JSON**.
+- **Try it without a key.** Real Jev answers recorded for every sample × every set (`npm run record`), played automatically when there's no server or no key. GitHub Pages now serves the app at `/app/` (`npm run pages`).
+- When the question drawer is open on wide screens, the page makes room instead of covering the content.
+- Tests: codec, chunking, replay coverage, and docs/app in sync with public/ (16 total).
+
 ## 1.1.0 - 2026-11-01
 Fixes from three 10-reviewer adversarial panels (security, usability, uniqueness). Every crash below was reproduced first and now has a regression test.
 
