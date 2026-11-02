@@ -11,6 +11,7 @@ An independent, open-source experiment in a way of using models like [TypeSafe's
 [![CI](https://github.com/charles-forsyth/jev-decision-wall/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/charles-forsyth/jev-decision-wall/actions/workflows/ci.yml)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)
 ![Dependencies](https://img.shields.io/badge/dependencies-0-6fd3ff)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23874577.svg)](https://doi.org/10.5281/zenodo.23874577)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **[▶ Try it now, no key needed](https://charles-forsyth.github.io/jev-decision-wall/app/)** · [Watch the 70-second demo](https://charles-forsyth.github.io/jev-decision-wall/#demo) · [Quick start](#quick-start) · [How it works](#how-it-works) · [Question sets](#seven-question-sets)
@@ -168,6 +169,14 @@ npm run pages     # copy public/ into docs/app/ for the no-key GitHub Pages copy
 ```
 
 The tests run the server against a fake TypeSafe endpoint and check that the key never leaks, caching, caps, request limits and the sign-in gate.
+
+## Cite
+
+If you use or build on Decision Wall, please cite it:
+
+> Forsyth III, C. E. (2026). *Decision Wall: ask 200 small yes/no questions at once* (Version 1.2.3) [Software]. Zenodo. https://doi.org/10.5281/zenodo.23874577
+
+The DOI above always resolves to the newest release. GitHub's "Cite this repository" button gives BibTeX and APA from `CITATION.cff`.
 
 ## License
 
