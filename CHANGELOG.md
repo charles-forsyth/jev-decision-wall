@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.1 - 2026-11-01
+Clearer about what this is: an independent experiment in a way of using models like Jev, not a TypeSafe product.
+- App header now reads "Independent demo · built on TypeSafe Jev" (was "TypeSafe · Jev · System One"); not-affiliated line added to the app footer.
+- README, showcase page and social card lead with the idea (ask many small questions at once, let code decide) and put the not-affiliated line up top.
+- Screenshots and social card retaken with the new header.
+
 ## 1.2.0 - 2026-11-01
 The features no other Jev demo has (from the uniqueness review panel).
 - **Explain: which words matter.** Leaves each sentence out in turn and re-asks all 200 questions, every version in parallel. The text lights up green or red for the question you pick, and the question drawer lists what drives it.

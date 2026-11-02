@@ -2,9 +2,11 @@
 
 # Decision Wall
 
-### 200 questions per call. About a quarter second.
+### Don't ask one big question. Ask 200 small ones at once.
 
-Type anything. Two hundred yes/no judgments light up as a live heatmap, all answered in **one parallel call** to [TypeSafe Jev](https://typesafe.ai).
+An independent, open-source experiment in a way of using models like [TypeSafe's Jev](https://typesafe.ai): break a judgment into many small yes/no questions, ask them all in **one parallel call** (about a quarter second), and let your code decide what counts.
+
+<sub>Not affiliated with or endorsed by TypeSafe. Jev is their model; Decision Wall is my experiment with it.</sub>
 
 [![CI](https://github.com/charles-forsyth/jev-decision-wall/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/charles-forsyth/jev-decision-wall/actions/workflows/ci.yml)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)
@@ -21,7 +23,9 @@ Type anything. Two hundred yes/no judgments light up as a live heatmap, all answ
 
 ## Why this exists
 
-Most AI models write. **Jev answers.** It's a "System One" model: give it some text and a list of questions, and it returns a calibrated probability for each one. No prose, no reasoning chains, just typed answers your code can use.
+The idea: when you need a judgment about some text (is this a scam? does this ticket need a human? is this claim checkable?), don't ask a model one big open question. Ask many small, concrete ones, get a probability for each, and let ordinary code combine them. You can see every piece of evidence, change the rules without re-asking, and test the questions one by one.
+
+That only works if asking many questions is cheap and fast, which is what TypeSafe's Jev is built for. Most AI models write. **Jev answers.** It's a "System One" model: give it some text and a list of questions, and it returns a calibrated probability for each one. No prose, no reasoning chains, just typed answers your code can use.
 
 The surprising part is **width**. Asking 200 questions about one text costs almost the same time as asking one:
 
