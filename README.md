@@ -4,7 +4,7 @@
 
 ### Don't ask one big question. Ask 200 small ones at once.
 
-An independent, open-source experiment in a way of using models like [TypeSafe's Jev](https://typesafe.ai): break a judgment into many small yes/no questions, ask them all in **one parallel call** (about a quarter second), and let your code decide what counts.
+An independent, open-source experiment in a way of using models like [TypeSafe's Jev](https://typesafe.ai): break a judgment into many small yes/no questions, ask them all in **one parallel call** (a few hundred milliseconds), and let your code decide what counts.
 
 <sub>Not affiliated with or endorsed by TypeSafe. Jev is their model; Decision Wall is my experiment with it.</sub>
 
