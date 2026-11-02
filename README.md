@@ -14,7 +14,7 @@ An independent, open-source experiment in a way of using models like [TypeSafe's
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23874577.svg)](https://doi.org/10.5281/zenodo.23874577)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**[▶ Try it now, no key needed](https://charles-forsyth.github.io/jev-decision-wall/app/)** · [Watch the 70-second demo](https://charles-forsyth.github.io/jev-decision-wall/#demo) · [Quick start](#quick-start) · [How it works](#how-it-works) · [Question sets](#seven-question-sets)
+**[▶ Try it now, no key needed](https://charles-forsyth.github.io/jev-decision-wall/app/)** · [Watch the one-minute demo](https://charles-forsyth.github.io/jev-decision-wall/#demo) · [Quick start](#quick-start) · [How it works](#how-it-works) · [Question sets](#seven-question-sets)
 
 <img src="docs/media/live-typing.gif" alt="Typing into Decision Wall: safety questions light up as the sentence grows" width="800">
 
